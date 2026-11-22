@@ -1,8 +1,10 @@
 # music_game_web
 
-Web version of [music_game](https://github.com/pablonm3/music_game), a Windows console game from 2019. The same rules, the terminal look and the original audio, playable in a browser, with a start menu, a shared top-10 leaderboard and touch controls for phones.
+Web version of [music_game](https://github.com/pablonm3/music_game), a Windows console game from 2019, playable in a browser, with a start menu, a shared top-10 leaderboard and touch controls for phones. It keeps the original's board, scoring, chase rule and music, and adds lives, more enemies, shooters and bombs.
 
-A voice names a colour (red, blue or cyan) that is never shown on screen: take the heart of that colour for +5, any other heart costs 15. The `@` chases you; one more arrives after one and after two minutes. The edges wrap around. Sound is required.
+The pieces are photo-like images that glide from cell to cell over a moving picture of the Amazon rainforest, with monkeys, birds and flies in it: a bald guy in a white t-shirt (the player), three shrooms that are photos of three real mushrooms, and skeleton robots. The frame, the score and the text screens keep the terminal look.
+
+A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15. Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. A bomb comes with every third robot; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. The edges wrap around. Sound is required.
 
 ## Run it
 
@@ -23,28 +25,71 @@ Environment variables:
 
 URL switches:
 
-- `?debug=1` test mode: the game clock stands still, a status line shows the game state, and the browser console has `mg.advance(ms)` to run the clock and `mg.game` for the state of the current game.
-- `?touch=1` the phone layout (square cells, the direction pad, `ESC` and `ENTER` buttons) on any device. It is on by itself on touch devices.
+- `?debug=1` test mode: the game clock stands still, a status line shows the game state, and the browser console has `mg.advance(ms)` to run the clock (and with it every timed effect: shots, bombs, the safe time) and `mg.game` for the state of the current game. The status line shows `lives=`, `bombs=` (held), `player=`, `safe=` (while the player flickers), `enemies=` (a shooter's cell ends in `s`), `shrooms=`, `lying=` (bombs on the board, `f` when flickering), `thrown=` (landing cells of bombs in the air) and `projectiles=`; `-` is an empty list.
+- `?touch=1` the phone layout (square cells, the direction pad, `ESC`, `ENTER` and `BOMB` buttons) on any device. It is on by itself on touch devices.
 
 ## Controls
 
-Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 ms. Enter and Escape in the menus. A name for the leaderboard is one to five letters: type it, or use up and down to change the selected letter (past `Z` or `A` on the last letter removes it) and left and right to move.
+Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 ms. Space throws a bomb 12 cells in the direction of your last move (`BOMB` on a phone). Enter and Escape in the menus. A name for the leaderboard is one to five letters: type it, or use up and down to change the selected letter (past `Z` or `A` on the last letter removes it) and left and right to move.
 
 ## Layout
 
 - `server/` — the HTTP server: static files with byte ranges (`static.js`), the leaderboard API (`app.js`) and its rules and JSON file (`leaderboard.js`). Node built-ins only.
 - `public/` — the game: one page and plain JavaScript modules, no build step. The rules are in `js/game.js`, with no DOM, audio or timers.
-- `public/audio/` — MP3 copies (128 kbit/s) of the original WAV files, same folders and names.
+- `public/img/` — the images of the game screen (see "Images and sounds").
+- `public/audio/` — MP3 files (128 kbit/s): copies of the original WAV files, same folders and names, plus the new voice in `voice/` and two effects made for this repo.
 - `test/` — unit tests.
 
-The audio was converted from the `music/` folder of the original repo with:
+The original audio was converted from the `music/` folder of the original repo with:
 
 ```bash
 SRC=<path to music_game>/music
 for f in background/b1 background/b2 background/b3 background/b4 background/b5 background/b6 \
-         goal/g1 goal/g2 goal/g3 goal/g4 nextGoal/Red nextGoal/Blue nextGoal/Cian nextGoal/error enemy record; do
+         goal/g1 goal/g2 goal/g3 goal/g4 nextGoal/error enemy record; do
   ffmpeg -nostdin -loglevel error -i "$SRC/$f.wav" -codec:a libmp3lame -b:a 128k "public/audio/$f.mp3"
 done
+```
+
+## Images and sounds
+
+Every image and sound that is not from the original game was made for this repo or carries a licence that allows publishing it here. Photos were edited (cut out, colour, size); CC BY asks for the credit, the licence and a note of the changes, given below. Files under `/img/` and `/audio/` are cached by browsers for a day, so a changed file needs a new name.
+
+| file in `public/img/` | shows | source | licence | edits |
+|---|---|---|---|---|
+| `player.png` | the player: a bald guy with glasses, a white t-shirt, khaki shorts and sandals | rendered for this repo: a 3D model made for this game, no photo of a person | made for this repo | rendered at 128 px with a see-through background |
+| `robot.png` | a robot that does not shoot: a steel skeleton with red eyes, two poses side by side | rendered for this repo: this game's own 3D model | made for this repo | two renders of one model with different arm and leg angles, 256 × 128 px |
+| `robot-shooter.png` | a robot that shoots: the same skeleton in rust, with a crest of spikes and a cannon arm, two poses | rendered for this repo | made for this repo | as `robot.png` |
+| `mushroom-red.png` | the red shroom: a young fly agaric, *Amanita muscaria* | photo 161856644 of [iNaturalist observation 97332092](https://www.inaturalist.org/observations/97332092) by Sigrid Jakob, [photo page](https://www.inaturalist.org/photos/161856644) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | cropped, background removed, the lowest 4.5% cut off, 16% darker, a little more colour and contrast, sharpened at 128 px, a soft dark edge |
+| `mushroom-blue.png` | the blue shroom: a sky-blue mushroom, *Entoloma hochstetteri* | photo 14551993 of [iNaturalist observation 10469319](https://www.inaturalist.org/observations/10469319) by Mike Bowie, [photo page](https://www.inaturalist.org/photos/14551993) | CC BY, "(c) Mike Bowie, some rights reserved (CC BY)"; iNaturalist's CC BY is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | cropped (the stem's cut end fades out), background removed, 12% lighter, sharpened at 128 px, a soft dark edge |
+| `mushroom-cyan.png` | the cyan shroom: a verdigris agaric, *Stropharia aeruginosa* | ["Stropharia aeruginosa in nature park Jesenicko in 2014"](https://commons.wikimedia.org/wiki/File:Stropharia_aeruginosa_in_nature_park_Jesenicko_in_2014.JPG) by Chmee2, Wikimedia Commons | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | cropped, background removed, hue moved 12° toward green (cap from 193° to 181°), 30% more colour, 5% darker, a little more contrast, sharpened at 128 px, a soft dark edge |
+| `bomb.png` | a steel ball mine with horns and a glowing ember | rendered for this repo | made for this repo | rendered at 128 px |
+| `projectile.png` | a glowing shot, white, yellow and orange | drawn for this repo (a script) | made for this repo | none |
+| `explosion.png` | a fireball | ["Explosion"](https://www.flickr.com/photos/29105521@N02/7999746744) by Freidwall, Flickr | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | cropped, the brightness of the flame turned into its opacity so only the fire shows, 512 × 512 px |
+| `background.jpg` | the Amazon rainforest: a river bend with an island, mist and cloud | ["Ecuadorian Amazon, Tena"](https://commons.wikimedia.org/wiki/File:Ecuadorian_Amazon,_Tena.jpg) by Dallas Krentzel ([Flickr](https://www.flickr.com/photos/31867959@N04/7429245768/)) | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | cut to 1960 × 1000 px; graded (the forest a deep green, the cloud a dark grey, the river a dark olive); a warm light, light shafts and a soft bloom drawn in; darker corners; eight dark, blurred palm fronds drawn into three corners |
+| `monkey.png` | a monkey in mid-leap | ["Squirrel Monkey Crossing"](https://www.flickr.com/photos/63154739@N00/2686866092) by Anthony Patterson, Flickr | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | cut out, darkened nearly to black |
+| `bird.png` | a macaw from below with spread wings | ["Scarlet Macaw flying overhead"](https://www.flickr.com/photos/34073237@N04/3631529485) by Christian Haugen, Flickr | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | cut out, colour taken down to 45% and darkened |
+| `flies.png` | seven dark specks with a pale wing each | drawn for this repo (a script) | made for this repo | none |
+
+Licences read at their source on 2026-11-22; for the two iNaturalist photos in iNaturalist's own record of the photo (`api.inaturalist.org`), as its pages refuse scripts. The tools that made the images (rembg for the cut-outs, three.js for the renders, Pillow for the edits) are not part of the repo.
+
+| file in `public/audio/` | what | how it was made | licence |
+|---|---|---|---|
+| `voice/red.mp3`, `voice/blue.mp3`, `voice/cyan.mp3` | a bright female voice saying the colour, with a light echo | the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) speech model (weights Apache-2.0) through [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) (MIT), voice `af_heart`, speed 1.1, the words `Red!`, `Blue!` and `Cyan!`; then the `ffmpeg` command below | made for this repo |
+| `life-lost.mp3` | a short falling synth sweep | `ffmpeg`, below | made for this repo |
+| `explosion.mp3` | a deep boom with a noise tail | `ffmpeg`, below | made for this repo |
+
+```bash
+# the voice, from the model's WAV output; <gain> sets the mean level to about -13 dB
+ffmpeg -i red.wav -af "silenceremove=start_periods=1:start_threshold=-40dB,highpass=f=150,aecho=0.8:0.5:110:0.25,atrim=0:0.90,afade=t=out:st=0.75:d=0.15,volume=<gain>dB,alimiter=limit=0.85:attack=2:release=30:level=0" \
+  -ar 44100 -ac 1 -codec:a libmp3lame -b:a 128k public/audio/voice/red.mp3      # gain 23.3; blue 20.5, cyan 21.1
+
+ffmpeg -f lavfi -i "aevalsrc='0.6*sin(2*PI*(880*t-520*t*t))+0.3*sin(2*PI*(1320*t-780*t*t))':d=0.6:s=44100" \
+  -af "afade=t=in:d=0.01,afade=t=out:st=0.35:d=0.25,aecho=0.8:0.4:60:0.3,volume=8dB" \
+  -ac 2 -codec:a libmp3lame -b:a 128k public/audio/life-lost.mp3
+
+ffmpeg -f lavfi -i "anoisesrc=d=1.1:c=brown:r=44100:a=1" -f lavfi -i "aevalsrc='sin(2*PI*(90*t-25*t*t))*exp(-3.5*t)':d=1.1:s=44100" \
+  -filter_complex "[0]lowpass=f=700,volume='exp(-4.5*t)':eval=frame[n];[1]volume=0.9[s];[n][s]amix=inputs=2:normalize=0,afade=t=in:d=0.005,afade=t=out:st=0.8:d=0.3,volume=2dB" \
+  -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k public/audio/explosion.mp3
 ```
 
 ## Deployment

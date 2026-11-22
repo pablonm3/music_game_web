@@ -8,6 +8,8 @@ const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.mp3': 'audio/mpeg',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.json': 'application/json; charset=utf-8',
 };
 
@@ -43,7 +45,9 @@ export function createStatic(publicDir) {
     if (!stat.isFile()) return sendText(res, 404, 'not found');
 
     res.setHeader('Content-Type', CONTENT_TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream');
-    res.setHeader('Cache-Control', decoded.startsWith('/audio/') ? 'public, max-age=86400' : 'no-cache');
+    // Audio and images change only under a new name, so a browser may keep them for a day.
+    const cachedForADay = decoded.startsWith('/audio/') || decoded.startsWith('/img/');
+    res.setHeader('Cache-Control', cachedForADay ? 'public, max-age=86400' : 'no-cache');
 
     const range = parseRange(req.headers.range, stat.size);
     if (range === 'unsatisfiable') {

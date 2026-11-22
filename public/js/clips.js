@@ -2,12 +2,14 @@
 // one file at random each time it plays. Removing a track is an edit here and a file.
 
 export const CLIPS = {
-  'voice-red': 'audio/nextGoal/Red.mp3',
-  'voice-blue': 'audio/nextGoal/Blue.mp3',
-  'voice-cyan': 'audio/nextGoal/Cian.mp3',
+  'voice-red': 'audio/voice/red.mp3',
+  'voice-blue': 'audio/voice/blue.mp3',
+  'voice-cyan': 'audio/voice/cyan.mp3',
   error: 'audio/nextGoal/error.mp3',
   enemy: 'audio/enemy.mp3',
   record: 'audio/record.mp3',
+  'life-lost': 'audio/life-lost.mp3',
+  explosion: 'audio/explosion.mp3',
   goal: ['audio/goal/g1.mp3', 'audio/goal/g2.mp3', 'audio/goal/g3.mp3', 'audio/goal/g4.mp3'],
 };
 

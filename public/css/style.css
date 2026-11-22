@@ -1,13 +1,11 @@
 /* Terminal look: one box of 100 by 33 cells that every screen is drawn in. The cell size
-   comes from the viewport alone, so everything scales together and nothing scrolls. */
+   comes from the viewport alone, so everything scales together and nothing scrolls. The
+   game screen lays images over it: the pieces and a picture behind them. */
 
 :root {
   /* The original's Windows console colours */
   --green: #008000;
   --aqua: #008080;
-  --red: #800000;
-  --blue: #0000ff;
-  --purple: #800080;
   --grey: #c0c0c0;
   --black: #000000;
 
@@ -72,25 +70,26 @@ body {
 
 /* ---- board ---- */
 
+/* The frame and the text under it are grid cells in the terminal look. The pieces are
+   images laid over the grid, outside its flow: board.js sets --x and --y of each to its
+   place in cells, and the transform centres the image there. */
 #board {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(100, var(--cw));
   grid-template-rows: repeat(33, var(--ch));
   font-size: var(--fs);
   line-height: var(--ch);
+  --sprite: calc(var(--cw) * 3); /* every piece: 3 columns, square in both layouts */
 }
 
-.frame,
-.piece {
+.frame {
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--cw);
   height: var(--ch);
   white-space: pre;
-}
-
-.frame {
   color: var(--green);
   background: var(--aqua);
   /* A glyph is 0.6 of the font size wide; stretch it to square cells in touch mode so
@@ -98,17 +97,144 @@ body {
   transform: scaleX(calc(var(--aspect) / 0.6));
 }
 
-.piece { font-variant-emoji: text; }
-.player { color: var(--green); }
-.enemy { color: var(--purple); }
-.heart.red { color: var(--red); }
-.heart.blue { color: var(--blue); }
-.heart.cyan { color: var(--aqua); }
+/* Column x spans (x - 1) to x cells, row y spans y to y + 1, as in the grid. */
+.piece,
+.explosion {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(calc((var(--x) - 0.5) * var(--cw) - 50%),
+                       calc((var(--y) + 0.5) * var(--ch) - 50%));
+  will-change: transform;
+  pointer-events: none;
+}
 
+.piece {
+  width: var(--sprite);
+  height: var(--sprite);
+  object-fit: cover;
+  object-position: 0 0; /* a robot file holds two poses side by side: the first */
+}
+
+.piece.stride { object-position: 100% 0; } /* … or the second */
+
+/* From the back: the backdrop, shrooms and lying bombs, robots, projectiles, the player,
+   thrown bombs, explosions. */
+.piece.heart,
+.piece.bomb { z-index: 1; }
+.piece.enemy { z-index: 2; }
+.piece.projectile { z-index: 3; }
+.piece.player { z-index: 4; }
+.piece.bomb.thrown { z-index: 5; }
+
+/* The player after a lost life, and a bomb about to vanish. Never fully gone, so a
+   screenshot always shows the piece. */
+.flicker { animation: flicker 0.3s steps(1) infinite; }
+@keyframes flicker { 50% { opacity: 0.25; } }
+
+/* 17 columns by 11 rows: the blast area of 8 columns and 5 rows each way. --part runs
+   from 0 to 1 over the explosion's time on the game clock. */
+.explosion {
+  z-index: 6;
+  width: calc(var(--cw) * 17);
+  height: calc(var(--ch) * 11);
+  transform: translate(calc((var(--x) - 0.5) * var(--cw) - 50%),
+                       calc((var(--y) + 0.5) * var(--ch) - 50%))
+             scale(calc(0.2 + 0.8 * var(--part)));
+  opacity: calc(1 - var(--part));
+}
+
+.status,
 .score {
-  grid-column-end: span 12;
   white-space: pre;
   color: var(--grey);
+}
+
+.status { grid-column-end: span 30; }
+.score { grid-column-end: span 12; }
+
+/* ---- backdrop: decoration behind the pieces; nothing in it touches the game ---- */
+
+/* Over the playable cells. The scene keeps the picture's shape (980 by 500 scene units)
+   and covers the area: on a desktop it fits exactly, on a phone only its middle band
+   shows. Animals are placed in scene units, so they stay on their trees in both. */
+.backdrop {
+  grid-column: 2 / 100;   /* columns 2 to 99 */
+  grid-row: 2 / 32;       /* rows y 1 to 30 */
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 1;             /* over the black board: lower it to dim everything behind the pieces */
+  pointer-events: none;
+  --scene-w: max(var(--cw) * 98, var(--ch) * 30 * 1.96);  /* 980 / 500 = 1.96 */
+  --u: calc(var(--scene-w) / 980);                        /* one scene unit */
+}
+
+.scene {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--scene-w);
+  height: calc(var(--scene-w) / 1.96);
+  transform: translate(-50%, -50%);
+}
+
+.still { position: absolute; inset: 0; width: 100%; height: 100%; }
+.critter { position: absolute; left: 0; top: 0; }
+.critter img { display: block; width: 100%; height: 100%; }
+
+/* A monkey: its box goes straight from one tree crown to the other in a tenth of its
+   round, and its image rises 30 units and comes down again on the way. */
+.monkey { width: calc(var(--u) * 21); height: calc(var(--u) * 30); }
+.monkey-1 { animation: monkey-1 9s linear infinite; }
+.monkey-1 img { animation: hop 9s linear infinite; }
+.monkey-2 { animation: monkey-2 13s linear -4.55s infinite; }
+.monkey-2 img { animation: hop 13s linear -4.55s infinite; }
+
+/* The image stands with its feet on the crown: 10.5 units left of it, 30 above. */
+@keyframes monkey-1 {
+  0%, 30%, 90%, 100% { transform: translate(calc(var(--u) * 204.5), calc(var(--u) * 136)); }
+  40%, 80% { transform: translate(calc(var(--u) * 294.5), calc(var(--u) * 133)); }
+}
+
+@keyframes monkey-2 {
+  0%, 30%, 90%, 100% { transform: translate(calc(var(--u) * 589.5), calc(var(--u) * 322)); }
+  40%, 80% { transform: translate(calc(var(--u) * 689.5), calc(var(--u) * 312)); }
+}
+
+@keyframes hop {
+  0%, 30%, 40%, 80%, 90%, 100% { translate: 0 0; animation-timing-function: ease-out; }
+  35%, 85% { translate: 0 calc(var(--u) * -30); animation-timing-function: ease-in; }
+}
+
+/* Birds cross from right to left through the mist; the negative delays spread them over
+   the picture from the first frame. */
+.bird { width: calc(var(--u) * 22); height: calc(var(--u) * 21); animation: fly 30s linear infinite; }
+.bird img { animation: flap 0.45s ease-in-out infinite; }
+.bird-1 { top: calc(var(--u) * 104); animation-duration: 26s; animation-delay: -7s; }
+.bird-2 { top: calc(var(--u) * 146); animation-duration: 34s; animation-delay: -21s; }
+.bird-3 { top: calc(var(--u) * 122); animation-duration: 41s; animation-delay: -30s; }
+
+@keyframes fly {
+  from { transform: translate(calc(var(--u) * 1000), 0); }
+  to { transform: translate(calc(var(--u) * -40), 0); }
+}
+
+@keyframes flap { 50% { transform: scaleY(0.3); } }
+
+/* Swarms of flies circle and shake over the river. */
+.flies { width: calc(var(--u) * 40); height: calc(var(--u) * 40); animation: buzz 3.1s linear infinite; }
+.flies-1 { left: calc(var(--u) * 170); top: calc(var(--u) * 350); }
+.flies-2 { left: calc(var(--u) * 600); top: calc(var(--u) * 265); animation-duration: 2.3s; }
+.flies-3 { left: calc(var(--u) * 800); top: calc(var(--u) * 280); animation-duration: 3.7s; }
+
+@keyframes buzz {
+  0% { transform: translate(0, 0) rotate(0); }
+  20% { transform: translate(calc(var(--u) * 7), calc(var(--u) * -5)) rotate(70deg); }
+  40% { transform: translate(calc(var(--u) * -4), calc(var(--u) * -9)) rotate(150deg); }
+  60% { transform: translate(calc(var(--u) * -8), calc(var(--u) * 3)) rotate(215deg); }
+  80% { transform: translate(calc(var(--u) * 5), calc(var(--u) * 6)) rotate(290deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
 }
 
 /* ---- text screens ---- */

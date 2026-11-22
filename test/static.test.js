@@ -63,6 +63,17 @@ describe('static files', () => {
     assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes.subarray(10, 20));
   });
 
+  it('serves images with an image type, cached for a day', async () => {
+    const png = await fetch(`${app.url}/img/player.png`);
+    assert.equal(png.status, 200);
+    assert.equal(png.headers.get('content-type'), 'image/png');
+    assert.equal(png.headers.get('cache-control'), 'public, max-age=86400');
+    const jpeg = await fetch(`${app.url}/img/background.jpg`);
+    assert.equal(jpeg.status, 200);
+    assert.equal(jpeg.headers.get('content-type'), 'image/jpeg');
+    assert.equal(jpeg.headers.get('cache-control'), 'public, max-age=86400');
+  });
+
   it('answers 416 to a range that starts past the end', async () => {
     const response = await fetch(`${app.url}/js/main.js`, { headers: { range: 'bytes=99999999-' } });
     assert.equal(response.status, 416);

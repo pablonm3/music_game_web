@@ -21,12 +21,13 @@ describe('readKey', () => {
     }
   });
 
-  it('gives a letter for the other letters, and the actions for Enter, Escape and Backspace', () => {
+  it('gives a letter for the other letters, and the actions for Enter, Escape, Backspace and Space', () => {
     assert.deepEqual(readKey(key('b')), { letter: 'B' });
     assert.deepEqual(readKey(key('Z')), { letter: 'Z' });
     assert.deepEqual(readKey(key('Enter')), { action: 'confirm' });
     assert.deepEqual(readKey(key('Escape')), { action: 'back' });
     assert.deepEqual(readKey(key('Backspace')), { action: 'erase' });
+    assert.deepEqual(readKey(key(' ')), { action: 'bomb' });
   });
 
   it('ignores the browser key repeat, modifiers and keys it does not use', () => {
@@ -36,7 +37,7 @@ describe('readKey', () => {
     assert.equal(readKey(key('r', { metaKey: true })), null);
     assert.equal(readKey(key('ArrowLeft', { altKey: true })), null);
     assert.equal(readKey(key('1')), null);
-    assert.equal(readKey(key(' ')), null);
+    assert.equal(readKey(key(' ', { repeat: true })), null, 'holding Space throws once');
     assert.equal(readKey(key('Tab')), null);
     assert.equal(readKey(key('é')), null);
   });

@@ -1,12 +1,12 @@
 // Turns keys and touch buttons into the actions every screen reads:
 //   {type: 'press', dir}   a direction newly down
 //   {type: 'repeat', dir}  the direction that keeps repeating after a release, or null
-//   {type: 'confirm'} {type: 'back'} {type: 'erase'} {type: 'letter', letter}
+//   {type: 'confirm'} {type: 'back'} {type: 'erase'} {type: 'bomb'} {type: 'letter', letter}
 // readKey and createHeld have no DOM and are tested in Node.
 
 const ARROWS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
 const DIAGONAL_LETTERS = { q: 'upLeft', e: 'upRight', a: 'downLeft', d: 'downRight' };
-const KEY_ACTIONS = { Enter: 'confirm', Escape: 'back', Backspace: 'erase' };
+const KEY_ACTIONS = { Enter: 'confirm', Escape: 'back', Backspace: 'erase', ' ': 'bomb' };
 
 // What a keydown means: {dir?, letter?, action?}, or null for a key the page leaves to
 // the browser. The browser's own key repeat is ignored: the game does the repeating.
@@ -75,7 +75,9 @@ export function attachKeys(target, held, onAction) {
 }
 
 // Touch buttons: [data-dir] buttons behave like held keys, [data-action] buttons send
-// their action on click (sound may only start at the end of a touch, not at its start).
+// their action on click (sound may only start at the end of a touch, not at its start),
+// [data-press] buttons send theirs on pointerdown: a second finger tapping while the
+// first holds a direction does not reliably make a click.
 export function attachButtons(root, held, onAction) {
   for (const button of root.querySelectorAll('[data-dir]')) {
     const dir = button.dataset.dir;
@@ -103,6 +105,13 @@ export function attachButtons(root, held, onAction) {
     button.addEventListener('click', (event) => {
       event.preventDefault();
       onAction({ type: button.dataset.action });
+    });
+  }
+
+  for (const button of root.querySelectorAll('[data-press]')) {
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      onAction({ type: button.dataset.press });
     });
   }
 

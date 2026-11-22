@@ -1,18 +1,50 @@
-// Draws the board as a 100 by 33 grid of fixed-size cells: grid column = x, grid row =
-// y + 1. The frame and the score label are built once; draw() moves the seven pieces.
+// Draws the game screen. A 100 by 33 grid of fixed-size cells (grid column = x, grid row
+// = y + 1) holds the frame and the text under it, in the terminal look. Behind the
+// playable cells lies the backdrop: a picture of the rainforest with animals moving over
+// it, decoration only. The pieces are images laid over the grid: draw() sets --x and --y
+// of each to the point positionAt gives, and the CSS centres the image there, so pieces
+// glide between cells.
+
+import { EXPLOSION_MS, isExpiring, isSafe, positionAt } from './game.js';
 
 const COLUMNS = 100;
 const FRAME_BOTTOM = 31;
-const SCORE_ROW = 32;
+const TEXT_ROW = 32;
+const STATUS_COLUMN = 2;
 const SCORE_COLUMN = 89;
-const MAX_ENEMIES = 3;
-// U+FE0E asks for the text form, so phones do not draw these as emoji.
-const TEXT_STYLE = '︎';
+const FLIGHT_LIFT_ROWS = 2; // a thrown bomb rises this high in the middle of its flight
+
+const IMAGES = {
+  player: 'img/player.png',
+  robot: 'img/robot.png',
+  shooter: 'img/robot-shooter.png',
+  red: 'img/mushroom-red.png',
+  blue: 'img/mushroom-blue.png',
+  cyan: 'img/mushroom-cyan.png',
+  bomb: 'img/bomb.png',
+  projectile: 'img/projectile.png',
+  explosion: 'img/explosion.png',
+};
+
+// The animals of the backdrop: class and image. Where and how each moves is in style.css.
+const CRITTERS = [
+  ['monkey monkey-1', 'img/monkey.png'],
+  ['monkey monkey-2', 'img/monkey.png'],
+  ['bird bird-1', 'img/bird.png'],
+  ['bird bird-2', 'img/bird.png'],
+  ['bird bird-3', 'img/bird.png'],
+  ['flies flies-1', 'img/flies.png'],
+  ['flies flies-2', 'img/flies.png'],
+  ['flies flies-3', 'img/flies.png'],
+];
 
 export function createBoard(container) {
   container.replaceChildren();
-  const fragment = document.createDocumentFragment();
+  // Loaded once now, so a piece that first appears mid-game does not pop in late.
+  const preloaded = Object.values(IMAGES).map((src) => Object.assign(new Image(), { src }));
 
+  const fragment = document.createDocumentFragment();
+  fragment.append(backdrop());
   for (let x = 1; x <= COLUMNS; x += 1) {
     fragment.append(frameCell(x, 0, x === 1 ? '╔' : x === COLUMNS ? '╗' : '═'));
     fragment.append(frameCell(x, FRAME_BOTTOM, x === 1 ? '╚' : x === COLUMNS ? '╝' : '═'));
@@ -22,29 +54,100 @@ export function createBoard(container) {
     fragment.append(frameCell(COLUMNS, y, '║'));
   }
 
-  const hearts = ['red', 'blue', 'cyan'].map((colour) => piece(`heart ${colour}`, `♥${TEXT_STYLE}`));
-  const enemies = Array.from({ length: MAX_ENEMIES }, () => piece('enemy', '@'));
-  const player = piece('player', `☺${TEXT_STYLE}`);
-  const score = document.createElement('div');
-  score.className = 'score';
-  place(score, SCORE_COLUMN, SCORE_ROW);
-
-  fragment.append(...hearts, ...enemies, player, score);
+  const hearts = ['red', 'blue', 'cyan'].map((colour) => pieceImage(`heart ${colour}`, IMAGES[colour]));
+  const player = pieceImage('player', IMAGES.player);
+  const status = textCell('status', STATUS_COLUMN);
+  const score = textCell('score', SCORE_COLUMN);
+  fragment.append(...hearts, player, status, score);
   container.append(fragment);
 
+  // One element per object of the game's lists, made when the object first shows.
+  const enemies = new Map();
+  const projectiles = new Map();
+  const lyingBombs = new Map();
+  const thrownBombs = new Map();
+  const explosions = new Map();
+  const add = (element) => container.appendChild(element);
+
   return {
+    preloaded, // held so the loads finish even for images no element shows yet
+
     draw(game) {
-      game.hearts.forEach((heart, i) => place(hearts[i], heart.x, heart.y));
-      enemies.forEach((element, i) => {
-        const enemy = game.enemies[i];
-        element.hidden = !enemy;
-        if (enemy) place(element, enemy.x, enemy.y);
-      });
-      place(player, game.player.x, game.player.y);
-      const text = `score: ${game.score}`;
-      if (score.textContent !== text) score.textContent = text;
+      const { time } = game;
+      game.hearts.forEach((heart, i) => moveTo(hearts[i], heart));
+
+      syncElements(enemies, game.enemies, (enemy) => add(enemy.shooter
+        ? pieceImage('enemy shooter', IMAGES.shooter)
+        : pieceImage('enemy', IMAGES.robot)));
+      for (const [enemy, element] of enemies) {
+        moveTo(element, positionAt(enemy, time));
+        // The second pose on odd steps: the legs and arms move with every step.
+        element.classList.toggle('stride', enemy.steps % 2 === 1);
+      }
+
+      syncElements(projectiles, game.projectiles, () => add(pieceImage('projectile', IMAGES.projectile)));
+      for (const [projectile, element] of projectiles) moveTo(element, positionAt(projectile, time));
+
+      syncElements(lyingBombs, game.lyingBombs, () => add(pieceImage('bomb', IMAGES.bomb)));
+      for (const [bomb, element] of lyingBombs) {
+        moveTo(element, bomb);
+        element.classList.toggle('flicker', isExpiring(game, bomb));
+      }
+
+      syncElements(thrownBombs, game.thrownBombs, () => add(pieceImage('bomb thrown', IMAGES.bomb)));
+      for (const [bomb, element] of thrownBombs) moveTo(element, inFlight(bomb, time));
+
+      syncElements(explosions, game.explosions, () => add(image('explosion', IMAGES.explosion)));
+      for (const [explosion, element] of explosions) {
+        moveTo(element, explosion);
+        setVar(element, '--part', Math.min((time - explosion.at) / EXPLOSION_MS, 1));
+      }
+
+      moveTo(player, positionAt(game.player, time));
+      player.classList.toggle('flicker', isSafe(game));
+
+      setText(status, `lives: ${game.lives}   bombs: ${game.bombs}`);
+      setText(score, `score: ${game.score}`);
     },
   };
+}
+
+// Keeps one element per object of `list`; `elements` is a Map from object to element.
+function syncElements(elements, list, create) {
+  for (const [object, element] of elements) {
+    if (!list.includes(object)) {
+      element.remove();
+      elements.delete(object);
+    }
+  }
+  for (const object of list) {
+    if (!elements.has(object)) elements.set(object, create(object));
+  }
+}
+
+// Where a thrown bomb is drawn: on its line, lifted in the middle of the flight so it
+// reads as a throw, never above row 1 where the frame would cut it off.
+function inFlight(bomb, time) {
+  const { x, y } = positionAt(bomb, time);
+  const part = Math.min(Math.max((time - bomb.movedAt) / bomb.glideMs, 0), 1);
+  const lift = FLIGHT_LIFT_ROWS * 4 * part * (1 - part);
+  return { x, y: Math.max(y - lift, 1) };
+}
+
+function backdrop() {
+  const element = document.createElement('div');
+  element.className = 'backdrop';
+  const scene = document.createElement('div');
+  scene.className = 'scene';
+  scene.append(image('still', 'img/background.jpg'));
+  for (const [className, src] of CRITTERS) {
+    const critter = document.createElement('div');
+    critter.className = `critter ${className}`;
+    critter.append(image('', src));
+    scene.append(critter);
+  }
+  element.append(scene);
+  return element;
 }
 
 function frameCell(x, y, character) {
@@ -55,16 +158,42 @@ function frameCell(x, y, character) {
   return cell;
 }
 
-function piece(className, text) {
-  const element = document.createElement('div');
-  element.className = `piece ${className}`;
-  element.textContent = text;
+function textCell(className, x) {
+  const cell = document.createElement('div');
+  cell.className = className;
+  place(cell, x, TEXT_ROW);
+  return cell;
+}
+
+function pieceImage(className, src) {
+  return image(`piece ${className}`, src);
+}
+
+function image(className, src) {
+  const element = document.createElement('img');
+  if (className) element.className = className;
+  element.src = src;
+  element.alt = '';
+  element.draggable = false;
   return element;
 }
 
 function place(element, x, y) {
-  const column = String(x);
-  const row = String(y + 1);
-  if (element.style.gridColumnStart !== column) element.style.gridColumnStart = column;
-  if (element.style.gridRowStart !== row) element.style.gridRowStart = row;
+  element.style.gridColumnStart = String(x);
+  element.style.gridRowStart = String(y + 1);
+}
+
+function moveTo(element, { x, y }) {
+  setVar(element, '--x', x);
+  setVar(element, '--y', y);
+}
+
+// Writes only on a change, so a piece standing still costs the browser nothing.
+function setVar(element, name, value) {
+  const text = String(Math.round(value * 1000) / 1000);
+  if (element.style.getPropertyValue(name) !== text) element.style.setProperty(name, text);
+}
+
+function setText(element, text) {
+  if (element.textContent !== text) element.textContent = text;
 }

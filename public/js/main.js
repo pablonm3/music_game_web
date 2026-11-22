@@ -5,7 +5,7 @@ import { createAfterGame } from './after-game.js';
 import { createApi } from './api.js';
 import { createAudio } from './audio.js';
 import { createBoard } from './board.js';
-import { advance, createGame, press, setRepeat } from './game.js';
+import { advance, createGame, press, setRepeat, throwBomb } from './game.js';
 import { attachButtons, attachKeys, createHeld } from './input.js';
 import {
   HOW_TO_PLAY_LINES, leaderboardLines, MENU_ENTRIES, menuLines, renderLines,
@@ -104,6 +104,7 @@ function startGame() {
     onAction(action) {
       if (action.type === 'press') press(game, action.dir);
       else if (action.type === 'repeat') setRepeat(game, action.dir);
+      else if (action.type === 'bomb') throwBomb(game);
     },
   };
 }
