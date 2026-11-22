@@ -170,32 +170,55 @@ export function advance(game, ms) {
   if (!game.over) game.time = end;
 }
 
+// The earliest thing due. On a tie the first one considered wins, so the calls below
+// follow the order described at `advance`.
 function nextDue(game) {
   let due = null;
   const consider = (at, run) => {
     if (!due || at < due.at) due = { at, run };
   };
+  considerPlayer(game, consider);
+  considerSafeEnd(game, consider);
+  considerArrival(game, consider);
+  considerEnemySteps(game, consider);
+  considerShots(game, consider);
+  considerProjectiles(game, consider);
+  considerBombs(game, consider);
+  considerExplosions(game, consider);
+  return due;
+}
 
-  if (game.held !== null) {
-    consider(game.nextRepeatAt, () => {
-      game.nextRepeatAt += REPEAT_EVERY;
-      movePlayer(game, game.held);
-    });
-  }
-  if (game.player.safeEndPending) {
-    consider(game.player.safeUntil, () => {
-      game.player.safeEndPending = false;
-      checkContact(game); // a contact still there when the safe time ends counts now
-    });
-  }
+function considerPlayer(game, consider) {
+  if (game.held === null) return;
+  consider(game.nextRepeatAt, () => {
+    game.nextRepeatAt += REPEAT_EVERY;
+    movePlayer(game, game.held);
+  });
+}
+
+function considerSafeEnd(game, consider) {
+  if (!game.player.safeEndPending) return;
+  consider(game.player.safeUntil, () => {
+    game.player.safeEndPending = false;
+    checkContact(game); // a contact still there when the safe time ends counts now
+  });
+}
+
+function considerArrival(game, consider) {
   const at = arrivalTime(game.arrivals + 1);
   consider(at, () => arrive(game, at));
+}
+
+function considerEnemySteps(game, consider) {
   for (const enemy of game.enemies) {
     consider(enemy.nextStepAt, () => {
       enemy.nextStepAt += enemy.interval;
       stepEnemy(game, enemy);
     });
   }
+}
+
+function considerShots(game, consider) {
   for (const enemy of game.enemies) {
     if (!enemy.shooter) continue;
     consider(enemy.nextShotAt, () => {
@@ -203,29 +226,40 @@ function nextDue(game) {
       fire(game, enemy);
     });
   }
+}
+
+function considerProjectiles(game, consider) {
   for (const projectile of game.projectiles) {
     consider(projectile.nextStepAt, () => {
       projectile.nextStepAt += PROJECTILE_STEP;
       stepProjectile(game, projectile);
     });
   }
+}
+
+// Lying bombs that expire, then thrown bombs that explode.
+function considerBombs(game, consider) {
   for (const bomb of game.lyingBombs) {
     consider(bomb.placedAt + BOMB_STEADY_MS + BOMB_FLICKER_MS, () => remove(game.lyingBombs, bomb));
   }
   for (const bomb of game.thrownBombs) {
     consider(bomb.explodesAt, () => explode(game, bomb));
   }
+}
+
+function considerExplosions(game, consider) {
   for (const explosion of game.explosions) {
     consider(explosion.at + EXPLOSION_MS, () => remove(game.explosions, explosion));
   }
-  return due;
 }
 
 // When arrival `number` (2, 3, 4, …) comes: ENEMY_ARRIVALS, then one every
 // LATER_ARRIVAL_EVERY without end. Arrival 1 is the enemy present at the start.
 function arrivalTime(number) {
   const listed = ENEMY_ARRIVALS[number - 2];
-  return listed ?? ENEMY_ARRIVALS.at(-1) + (number - 1 - ENEMY_ARRIVALS.length) * LATER_ARRIVAL_EVERY;
+  if (listed !== undefined) return listed;
+  const laterArrival = number - 1 - ENEMY_ARRIVALS.length; // 1 for the first arrival after the list, 2 for the next, …
+  return ENEMY_ARRIVALS.at(-1) + laterArrival * LATER_ARRIVAL_EVERY;
 }
 
 // The arrival count never goes down, so a destroyed enemy changes no later arrival.
@@ -398,6 +432,7 @@ function respawnCell(game) {
   let cells = [];
   for (const cell of playableCells()) {
     if (occupied.some((piece) => sameCell(piece, cell))) continue;
+    // capped: every cell at least RESPAWN_DISTANCE away ties, so the pick is random among them
     let nearest = RESPAWN_DISTANCE;
     for (const enemy of game.enemies) {
       nearest = Math.min(nearest, Math.max(Math.abs(enemy.x - cell.x), Math.abs(enemy.y - cell.y)));
