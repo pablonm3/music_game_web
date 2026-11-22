@@ -1,0 +1,14 @@
+{
+  "name": "music-game-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web version of music_game: the terminal game in a browser, with a shared leaderboard",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/main.js",
+    "test": "node --test"
+  }
+}

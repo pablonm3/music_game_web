@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <title>MUSIC GAME</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <main id="view">
+    <div id="terminal">
+      <div id="board" hidden></div>
+      <div id="text"></div>
+    </div>
+  </main>
+
+  <div id="controls" aria-label="Touch controls">
+    <div class="keys">
+      <button type="button" data-action="back">ESC</button>
+      <button type="button" data-action="confirm">ENTER</button>
+    </div>
+    <div class="pad">
+      <button type="button" data-dir="upLeft" aria-label="up-left">&#x2196;&#xFE0E;</button>
+      <button type="button" data-dir="up" aria-label="up">&#x2191;</button>
+      <button type="button" data-dir="upRight" aria-label="up-right">&#x2197;&#xFE0E;</button>
+      <button type="button" data-dir="left" aria-label="left">&#x2190;</button>
+      <span></span>
+      <button type="button" data-dir="right" aria-label="right">&#x2192;</button>
+      <button type="button" data-dir="downLeft" aria-label="down-left">&#x2199;&#xFE0E;</button>
+      <button type="button" data-dir="down" aria-label="down">&#x2193;</button>
+      <button type="button" data-dir="downRight" aria-label="down-right">&#x2198;&#xFE0E;</button>
+    </div>
+  </div>
+
+  <div id="turn">TURN YOUR DEVICE TO LANDSCAPE</div>
+</body>
+</html>
