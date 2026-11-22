@@ -107,7 +107,7 @@ export function positionAt(piece, time) {
   };
 }
 
-// The 3 s after the player reappears, when no life can be taken.
+// The SAFE_MS after the player reappears, when no life can be taken.
 export function isSafe(game) {
   return game.time < game.player.safeUntil;
 }
