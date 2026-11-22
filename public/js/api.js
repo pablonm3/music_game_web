@@ -1,5 +1,5 @@
 // Leaderboard requests. Every network error, timeout or unexpected answer becomes
-// {unavailable: true}, so the game keeps working without the backend (AC21).
+// {unavailable: true}, so the game keeps working without the backend.
 
 const TIMEOUT_MS = 4000;
 const UNAVAILABLE = Object.freeze({ unavailable: true });
