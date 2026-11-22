@@ -47,6 +47,14 @@ for f in background/b1 background/b2 background/b3 background/b4 background/b5 b
 done
 ```
 
+## Deployment
+
+A push to `main` runs `.github/workflows/deploy.yml`: `npm test`, then one SSH login to the server with a key that may run only the server's copy of `deploy/autodeploy.sh`. That script checks out `origin/main` in `~/music_game_web`, restarts the pm2 app `music-game-web`, checks that it answers, and goes back to the previous commit when it does not (the workflow run then fails).
+
+One-time setup, from a clone on your own computer: `deploy/setup_deploy.sh <user@host>`. It creates the deploy key, installs the script on the server and stores the three repository secrets. Run it again after changing `deploy/autodeploy.sh`.
+
+The server keeps what is not in the repo in `~/music_game_web_data/`: the pm2 definition (`PORT`, `HOST`, `LEADERBOARD_FILE`), the leaderboard file and `autodeploy.log`. The game is served under a path of the site (nginx proxies `/music-game/` to the app), so the page must keep using relative URLs.
+
 ## API
 
 | request | answer |

@@ -1,0 +1,55 @@
+# Runs the tests on every push to main and, when they pass, deploys to the server
+# that serves https://pablomarino.com/music-game/.
+#
+# The deploy is one SSH login with a key that the server restricts to a single command,
+# its installed copy of deploy/autodeploy.sh: it checks out origin/main, restarts the pm2
+# app, checks that it answers and goes back to the previous commit when it does not.
+#
+# Repository secrets, all three set by deploy/setup_deploy.sh: DEPLOY_KEY (private key),
+# DEPLOY_KNOWN_HOSTS (the server's host key lines), DEPLOY_TARGET (user@host).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# one deploy at a time; a second push waits for the first to finish
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Test
+        run: npm test
+
+      - name: Deploy to the server
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ] || [ -z "$DEPLOY_TARGET" ]; then
+            echo "::error::Deploy secrets are not set. Run deploy/setup_deploy.sh once (README, Deployment)."
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # no command is given: the server runs its deploy script for this key
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes "$DEPLOY_TARGET"
