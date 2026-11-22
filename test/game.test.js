@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { advance, chase, COLOURS, createGame, hold, press } from '../public/js/game.js';
+import { advance, chase, COLOURS, createGame, press, setRepeat } from '../public/js/game.js';
 
 // Returns the given values in order, then `rest` forever.
 function scripted(values, rest = 0.5) {
@@ -101,7 +101,7 @@ describe('held direction', () => {
     assert.equal(game.player.x, 53);
     advance(game, 60);
     assert.equal(game.player.x, 54);
-    hold(game, null);
+    setRepeat(game, null);
     advance(game, 500);
     assert.equal(game.player.x, 54);
   });
@@ -110,7 +110,7 @@ describe('held direction', () => {
     const game = quietGame();
     press(game, 'up');
     advance(game, 100);
-    hold(game, null);
+    setRepeat(game, null);
     advance(game, 500);
     assert.deepEqual(cell(game.player), [50, 16]);
   });
@@ -122,11 +122,11 @@ describe('held direction', () => {
     assert.equal(game.player.x, 54);
   });
 
-  it('changes the direction of the next repeat on hold, not its time', () => {
+  it('changes the direction of the next repeat on setRepeat, not its time', () => {
     const game = quietGame();
     press(game, 'right');       // 51,17; next repeat at 180
     advance(game, 100);
-    hold(game, 'down');
+    setRepeat(game, 'down');
     advance(game, 79);
     assert.deepEqual(cell(game.player), [51, 17]);
     advance(game, 1);
@@ -148,7 +148,7 @@ describe('held direction', () => {
   it('waits 180 ms when a direction starts repeating after nothing was', () => {
     const game = quietGame();
     advance(game, 5000);
-    hold(game, 'left');
+    setRepeat(game, 'left');
     advance(game, 179);
     assert.deepEqual(cell(game.player), [50, 17]);
     advance(game, 1);
@@ -271,7 +271,7 @@ describe('game over', () => {
     assert.equal(game.events.at(-1), 'over');
     const before = JSON.stringify(game);
     press(game, 'up');
-    hold(game, 'up');
+    setRepeat(game, 'up');
     advance(game, 1000);
     assert.equal(JSON.stringify(game), before);
   });

@@ -69,7 +69,7 @@ export function press(game, dir) {
 
 // Changes which direction repeats (null stops it), without moving the player and without
 // restarting the wait of a repeat already running. The page calls it on a release.
-export function hold(game, dir) {
+export function setRepeat(game, dir) {
   if (game.over) return;
   const next = DIRECTIONS[dir] ? dir : null;
   // Nothing was repeating, so the stored time is stale: start a fresh wait.
@@ -103,8 +103,8 @@ function nextDue(game) {
       movePlayer(game, game.held);
     });
   }
-  if (game.enemies.length <= ENEMY_ARRIVALS.length) {
-    const at = ENEMY_ARRIVALS[game.enemies.length - 1];
+  const at = nextArrivalAt(game);
+  if (at !== undefined) {
     consider(at, () => {
       const enemy = newEnemy(game.enemies.length, at);
       game.enemies.push(enemy);
@@ -119,6 +119,12 @@ function nextDue(game) {
     });
   }
   return due;
+}
+
+// The first enemy is there from the start; ENEMY_ARRIVALS[i] brings enemy i+1.
+// Undefined once every enemy has arrived.
+function nextArrivalAt(game) {
+  return ENEMY_ARRIVALS[game.enemies.length - 1];
 }
 
 function newEnemy(index, arrivedAt) {

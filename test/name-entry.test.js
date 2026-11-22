@@ -71,7 +71,7 @@ describe('name entry', () => {
   });
 
   it('ignores Escape and diagonals', () => {
-    const entry = run([{ type: 'back' }, dir('upLeft'), dir('downRight'), { type: 'hold', dir: null }]);
+    const entry = run([{ type: 'back' }, dir('upLeft'), dir('downRight'), { type: 'repeat', dir: null }]);
     assert.deepEqual(entry, { letters: ['A'], cursor: 0 });
   });
 

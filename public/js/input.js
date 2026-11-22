@@ -1,6 +1,6 @@
 // Turns keys and touch buttons into the actions every screen reads:
 //   {type: 'press', dir}   a direction newly down
-//   {type: 'hold', dir}    the direction that keeps repeating after a release, or null
+//   {type: 'repeat', dir}  the direction that keeps repeating after a release, or null
 //   {type: 'confirm'} {type: 'back'} {type: 'erase'} {type: 'letter', letter}
 // readKey and createHeld have no DOM and are tested in Node.
 
@@ -68,7 +68,7 @@ export function attachKeys(target, held, onAction) {
     // macOS sends no keyup for keys released while Cmd is down: forget them all.
     if (event.key === 'Meta') return releaseAll(held, onAction);
     const dir = keyDirection(event);
-    if (dir) onAction({ type: 'hold', dir: held.up(dir) });
+    if (dir) onAction({ type: 'repeat', dir: held.up(dir) });
   });
 
   target.addEventListener('blur', () => releaseAll(held, onAction));
@@ -84,7 +84,7 @@ export function attachButtons(root, held, onAction) {
       if (pointer === null) return;
       pointer = null;
       button.classList.remove('down');
-      onAction({ type: 'hold', dir: held.up(dir) });
+      onAction({ type: 'repeat', dir: held.up(dir) });
     };
     button.addEventListener('pointerdown', (event) => {
       event.preventDefault();
@@ -111,5 +111,5 @@ export function attachButtons(root, held, onAction) {
 
 function releaseAll(held, onAction) {
   held.clear();
-  onAction({ type: 'hold', dir: null });
+  onAction({ type: 'repeat', dir: null });
 }

@@ -7,6 +7,10 @@
 export const MAX_LETTERS = 5;
 const ALPHABET = 26;
 const EMPTY = ALPHABET; // the stop after Z: no letter
+const CODE_A = 'A'.charCodeAt(0);
+
+const letterIndex = (letter) => letter.charCodeAt(0) - CODE_A;
+const letterAt = (index) => String.fromCharCode(CODE_A + index);
 
 export function createNameEntry() {
   return { letters: ['A'], cursor: 0 };
@@ -55,9 +59,9 @@ function typeLetter(entry, letter) {
 function step(entry, by) {
   const { letters, cursor } = entry;
   const onLast = cursor >= letters.length - 1;
-  const stops = onLast ? ALPHABET + 1 : ALPHABET;
-  const at = cursor < letters.length ? letters[cursor].charCodeAt(0) - 65 : EMPTY;
-  const next = (at + by + stops) % stops;
+  const stopCount = onLast ? ALPHABET + 1 : ALPHABET;
+  const current = cursor < letters.length ? letterIndex(letters[cursor]) : EMPTY;
+  const next = (current + by + stopCount) % stopCount;
   if (next === EMPTY) letters.length = cursor;
-  else letters[cursor] = String.fromCharCode(65 + next);
+  else letters[cursor] = letterAt(next);
 }
