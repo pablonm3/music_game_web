@@ -2,9 +2,9 @@
 
 Web version of [music_game](https://github.com/pablonm3/music_game), a Windows console game from 2019, playable in a browser, with a start menu, a shared top-10 leaderboard and touch controls for phones. It keeps the original's board, scoring, chase rule and music, and adds lives, more enemies, shooters and bombs.
 
-The pieces are photo-like images that glide from cell to cell over a moving picture of the Amazon rainforest, with monkeys, birds and flies in it: a bald guy in a white t-shirt (the player), three shrooms that are photos of three real mushrooms, and skeleton robots. The frame, the score and the text screens keep the terminal look.
+The pieces are photo-like images that glide from cell to cell over a moving picture of the Amazon rainforest, with monkeys, birds and flies in it: a bald guy in a white t-shirt (the player, whose feet move while he walks), three shrooms that are photos of three real mushrooms, and skeleton robots. Under the frame, one heart for each life left and one bomb for each held bomb (from 6 bombs on, one bomb and the number). The frame, the score and the text screens keep the terminal look.
 
-A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15. Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. A bomb comes with every third robot; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. The edges wrap around. Sound is required.
+A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15 (when two shrooms lie on one cell and one of them is the named one, the step counts as right). Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. A bomb comes with every third robot; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. The edges wrap around. Sound is required.
 
 ## Run it
 
@@ -56,13 +56,14 @@ Every image and sound that is not from the original game was made for this repo 
 
 | file in `public/img/` | shows | source | licence | edits |
 |---|---|---|---|---|
-| `player.png` | the player: a bald guy with glasses, a white t-shirt, khaki shorts and sandals | rendered for this repo: a 3D model made for this game, no photo of a person | made for this repo | rendered at 128 px with a see-through background |
+| `player-walk.png` | the player: a bald guy with glasses, a white t-shirt, khaki shorts and sandals, three poses side by side: standing, then a stride with each foot lifted | rendered for this repo: a 3D model made for this game, no photo of a person | made for this repo | three renders of one model (in a stride one knee lifted, the arms swung against the legs, the body leaning 5° over the standing leg), all cut with the box of the standing pose, 384 × 128 px with a see-through background |
 | `robot.png` | a robot that does not shoot: a steel skeleton with red eyes, two poses side by side | rendered for this repo: this game's own 3D model | made for this repo | two renders of one model with different arm and leg angles, 256 × 128 px |
 | `robot-shooter.png` | a robot that shoots: the same skeleton in rust, with a crest of spikes and a cannon arm, two poses | rendered for this repo | made for this repo | as `robot.png` |
 | `mushroom-red.png` | the red shroom: a young fly agaric, *Amanita muscaria* | photo 161856644 of [iNaturalist observation 97332092](https://www.inaturalist.org/observations/97332092) by Sigrid Jakob, [photo page](https://www.inaturalist.org/photos/161856644) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | cropped, background removed, the lowest 4.5% cut off, 16% darker, a little more colour and contrast, sharpened at 128 px, a soft dark edge |
 | `mushroom-blue.png` | the blue shroom: a sky-blue mushroom, *Entoloma hochstetteri* | photo 14551993 of [iNaturalist observation 10469319](https://www.inaturalist.org/observations/10469319) by Mike Bowie, [photo page](https://www.inaturalist.org/photos/14551993) | CC BY, "(c) Mike Bowie, some rights reserved (CC BY)"; iNaturalist's CC BY is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | cropped (the stem's cut end fades out), background removed, 12% lighter, sharpened at 128 px, a soft dark edge |
 | `mushroom-cyan.png` | the cyan shroom: a verdigris agaric, *Stropharia aeruginosa* | ["Stropharia aeruginosa in nature park Jesenicko in 2014"](https://commons.wikimedia.org/wiki/File:Stropharia_aeruginosa_in_nature_park_Jesenicko_in_2014.JPG) by Chmee2, Wikimedia Commons | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | cropped, background removed, hue moved 12° toward green (cap from 193° to 181°), 30% more colour, 5% darker, a little more contrast, sharpened at 128 px, a soft dark edge |
-| `bomb.png` | a steel ball mine with horns and a glowing ember | rendered for this repo | made for this repo | rendered at 128 px |
+| `bomb.png` | a steel ball mine with horns and a glowing ember; also the icon of a held bomb under the frame | rendered for this repo | made for this repo | rendered at 128 px |
+| `life.png` | a glossy red heart, the icon of a life under the frame | rendered for this repo: a rounded heart shape under the bomb's lights | made for this repo | rendered at 128 px with a see-through background |
 | `projectile.png` | a glowing shot, white, yellow and orange | drawn for this repo (a script) | made for this repo | none |
 | `explosion.png` | a fireball | ["Explosion"](https://www.flickr.com/photos/29105521@N02/7999746744) by Freidwall, Flickr | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | cropped, the brightness of the flame turned into its opacity so only the fire shows, 512 × 512 px |
 | `background.jpg` | the Amazon rainforest: a river bend with an island, mist and cloud | ["Ecuadorian Amazon, Tena"](https://commons.wikimedia.org/wiki/File:Ecuadorian_Amazon,_Tena.jpg) by Dallas Krentzel ([Flickr](https://www.flickr.com/photos/31867959@N04/7429245768/)) | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | cut to 1960 × 1000 px; graded (the forest a deep green, the cloud a dark grey, the river a dark olive); a warm light, light shafts and a soft bloom drawn in; darker corners; eight dark, blurred palm fronds drawn into three corners |
@@ -74,14 +75,16 @@ Licences read at their source on 2026-11-22; for the two iNaturalist photos in i
 
 | file in `public/audio/` | what | how it was made | licence |
 |---|---|---|---|
-| `voice/red.mp3`, `voice/blue.mp3`, `voice/cyan.mp3` | a bright female voice saying the colour, with a light echo | the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) speech model (weights Apache-2.0) through [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) (MIT), voice `af_heart`, speed 1.1, the words `Red!`, `Blue!` and `Cyan!`; then the `ffmpeg` command below | made for this repo |
+| `voice/red.mp3`, `voice/blue.mp3`, `voice/cyan-v2.mp3` | a bright female voice saying the colour, with a light echo | the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) speech model (weights Apache-2.0) through [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) (MIT), voice `af_heart`, speed 1.1, the words `Red!` and `Blue!`; then the `ffmpeg` command below. Cyan is given as the sounds `sˈaɪjæn!` ("SIGH-yan") at speed 1.0, as the model's own reading of `Cyan!` stresses the second syllable and was hard to understand over the music; its command adds a high shelf before the echo, so the "s" is heard, and cuts at 0.95 s | made for this repo |
 | `life-lost.mp3` | a short falling synth sweep | `ffmpeg`, below | made for this repo |
 | `explosion.mp3` | a deep boom with a noise tail | `ffmpeg`, below | made for this repo |
 
 ```bash
 # the voice, from the model's WAV output; <gain> sets the mean level to about -13 dB
 ffmpeg -i red.wav -af "silenceremove=start_periods=1:start_threshold=-40dB,highpass=f=150,aecho=0.8:0.5:110:0.25,atrim=0:0.90,afade=t=out:st=0.75:d=0.15,volume=<gain>dB,alimiter=limit=0.85:attack=2:release=30:level=0" \
-  -ar 44100 -ac 1 -codec:a libmp3lame -b:a 128k public/audio/voice/red.mp3      # gain 23.3; blue 20.5, cyan 21.1
+  -ar 44100 -ac 1 -codec:a libmp3lame -b:a 128k public/audio/voice/red.mp3      # gain 23.3; blue 20.5
+ffmpeg -i cyan.wav -af "silenceremove=start_periods=1:start_threshold=-40dB,highpass=f=150,highshelf=f=3500:g=7,aecho=0.8:0.5:110:0.25,atrim=0:0.95,afade=t=out:st=0.80:d=0.15,volume=20.1dB,alimiter=limit=0.85:attack=2:release=30:level=0" \
+  -ar 44100 -ac 1 -codec:a libmp3lame -b:a 128k public/audio/voice/cyan-v2.mp3
 
 ffmpeg -f lavfi -i "aevalsrc='0.6*sin(2*PI*(880*t-520*t*t))+0.3*sin(2*PI*(1320*t-780*t*t))':d=0.6:s=44100" \
   -af "afade=t=in:d=0.01,afade=t=out:st=0.35:d=0.25,aecho=0.8:0.4:60:0.3,volume=8dB" \

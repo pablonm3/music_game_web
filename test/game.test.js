@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  advance, chase, COLOURS, createGame, isExpiring, isSafe, positionAt, press, setRepeat, throwBomb,
+  advance, chase, COLOURS, createGame, isExpiring, isSafe, playerPose, positionAt, press, setRepeat, throwBomb,
 } from '../public/js/game.js';
 
 // Returns the given values in order, then `rest` forever.
@@ -216,6 +216,46 @@ describe('hearts and score', () => {
     press(game, 'right');
     advance(game, 180);
     assert.equal(game.score, 5);
+  });
+
+  it('counts the shroom of the named colour as right, whichever colour it is', () => {
+    for (const goal of COLOURS) {
+      const game = quietGame({ goal });
+      Object.assign(heart(game, goal), { x: 51, y: 17 });
+      press(game, 'right');
+      assert.equal(game.score, 5, goal);
+      assert.equal(game.events.length, 2, goal);
+      assert.equal(game.events[0], 'goal', goal);
+      assert.match(game.events[1], /^voice-(red|blue|cyan)$/, goal);
+    }
+  });
+
+  it('counts the goal heart as right, once, when another heart lies on its cell', () => {
+    for (const goal of COLOURS) {
+      for (const other of COLOURS.filter((colour) => colour !== goal)) {
+        const game = quietGame({ goal });
+        // both move away, to (30, 10) and (60, 21); the new goal is the other heart's
+        // colour, which must not count for it on this step
+        game.random = scripted([0.3, 0.3, 0.6, 0.6, COLOURS.indexOf(other) / 3 + 0.01]);
+        Object.assign(heart(game, goal), { x: 51, y: 17 });
+        Object.assign(heart(game, other), { x: 51, y: 17 });
+        press(game, 'right');
+        assert.equal(game.score, 5, `${goal} with ${other}`);
+        assert.deepEqual(game.events, ['goal', `voice-${other}`], `${goal} with ${other}`);
+        assert.deepEqual(cells([heart(game, goal), heart(game, other)]), ['30,10', '60,21']);
+      }
+    }
+  });
+
+  it('counts two wrong hearts on one cell as two', () => {
+    const game = quietGame({ goal: 'red' });
+    game.random = scripted([0.3, 0.3, 0.6, 0.6]);
+    Object.assign(heart(game, 'blue'), { x: 51, y: 17 });
+    Object.assign(heart(game, 'cyan'), { x: 51, y: 17 });
+    press(game, 'right');
+    assert.equal(game.score, -30);
+    assert.deepEqual(game.events, ['error', 'error']);
+    assert.equal(game.goal, 'red');
   });
 });
 
@@ -747,5 +787,117 @@ describe('bombs', () => {
     runTo(game, 180_000);
     assert.equal(game.enemies.length, 3);
     assert.equal(game.lyingBombs.length, 1, 'arrival 6 brings a bomb');
+  });
+});
+
+describe('player pose', () => {
+  // The pose at every 10 ms from now until `until`, as runs of [pose, ms it lasted];
+  // `runs` continues an earlier list.
+  function poseRuns(game, until, runs = []) {
+    while (game.time < until) {
+      const pose = playerPose(game);
+      if (runs.length > 0 && runs.at(-1)[0] === pose) runs.at(-1)[1] += 10;
+      else runs.push([pose, 10]);
+      advance(game, 10);
+    }
+    return runs;
+  }
+
+  it('stands at the start and for as long as no key is pressed', () => {
+    const game = quietGame();
+    assert.equal(playerPose(game), 0);
+    advance(game, 5000);
+    assert.equal(playerPose(game), 0);
+  });
+
+  it('takes two strides of 120 ms for one press, then stands', () => {
+    const game = quietGame();
+    advance(game, 1000);
+    press(game, 'right');
+    setRepeat(game, null);
+    assert.deepEqual(poseRuns(game, 2000), [[1, 120], [2, 120], [0, 760]]);
+  });
+
+  it('changes stride every 120 ms while a direction is held, from the press on', () => {
+    const game = quietGame();
+    advance(game, 1000);
+    press(game, 'right');
+    const runs = poseRuns(game, 2200);
+    assert.deepEqual(runs, Array.from({ length: 10 }, (_, i) => [1 + (i % 2), 120]));
+  });
+
+  it('finishes its stride after a release and stands less than 300 ms after the last move', () => {
+    for (const heldFor of [200, 250, 310, 370, 500, 990]) {
+      const game = quietGame();
+      advance(game, 1000);
+      press(game, 'up');
+      const runs = poseRuns(game, 1000 + heldFor);
+      setRepeat(game, null);
+      const lastMove = game.player.movedAt;
+      poseRuns(game, lastMove + 600, runs);
+      const strides = runs.slice(0, -1);
+      assert.equal(runs.at(-1)[0], 0, `held ${heldFor} ms`);
+      assert.ok(strides.every(([pose, ms], i) => pose === 1 + (i % 2) && ms === 120), `held ${heldFor} ms: ${JSON.stringify(runs)}`);
+      const stoodAfter = 1000 + strides.length * 120 - lastMove;
+      assert.ok(stoodAfter >= 180 && stoodAfter < 300, `held ${heldFor} ms: stood ${stoodAfter} ms after the last move`);
+    }
+  });
+
+  it('starts every walk with the same stride', () => {
+    const game = quietGame();
+    for (const at of [1000, 1700, 2433, 3001]) {
+      advance(game, at - game.time);
+      assert.equal(playerPose(game), 0);
+      press(game, 'left');
+      setRepeat(game, null);
+      assert.equal(playerPose(game), 1);
+    }
+  });
+
+  it('keeps walking across an edge', () => {
+    const game = quietGame();
+    Object.assign(game.player, { x: 98, y: 10 });
+    advance(game, 1000);
+    press(game, 'right');
+    const runs = poseRuns(game, 1600);
+    assert.equal(game.player.x < 98, true, 'wrapped');
+    assert.deepEqual(runs, Array.from({ length: 5 }, (_, i) => [1 + (i % 2), 120]));
+  });
+
+  it('stands when he reappears after a lost life, until his next move, and walks while safe', () => {
+    const game = quietGame();
+    game.random = () => 0.5;
+    advance(game, 1000);
+    press(game, 'right');
+    advance(game, 200);
+    assert.notEqual(playerPose(game), 0);
+    setRepeat(game, null);
+    Object.assign(game.enemies[0], { x: game.player.x + 1, y: game.player.y });
+    press(game, 'right'); // onto the enemy
+    setRepeat(game, null);
+    assert.equal(game.lives, 2);
+    assert.equal(playerPose(game), 0);
+    advance(game, 500);
+    assert.equal(playerPose(game), 0);
+    press(game, 'down');
+    assert.ok(isSafe(game));
+    assert.equal(playerPose(game), 1);
+    advance(game, 130);
+    assert.equal(playerPose(game), 2);
+  });
+
+  it('gives a long advance the same pose as many short ones', () => {
+    const run = (stepMs) => {
+      const game = quietGame();
+      const poses = [];
+      advance(game, 1000);
+      press(game, 'right');
+      for (let t = 0; t < 1200; t += 300) {
+        for (let done = 0; done < 300; done += stepMs) advance(game, stepMs);
+        poses.push(playerPose(game), game.player.walkSince);
+      }
+      return poses;
+    };
+    assert.deepEqual(run(300), run(10));
   });
 });

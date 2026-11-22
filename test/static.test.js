@@ -64,7 +64,7 @@ describe('static files', () => {
   });
 
   it('serves images with an image type, cached for a day', async () => {
-    const png = await fetch(`${app.url}/img/player.png`);
+    const png = await fetch(`${app.url}/img/player-walk.png`);
     assert.equal(png.status, 200);
     assert.equal(png.headers.get('content-type'), 'image/png');
     assert.equal(png.headers.get('cache-control'), 'public, max-age=86400');

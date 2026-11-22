@@ -118,6 +118,10 @@ body {
 
 .piece.stride { object-position: 100% 0; } /* … or the second */
 
+/* The player's file holds three poses side by side: standing, then the two strides.
+   board.js sets --pose to 0, 1 or 2. */
+.piece.player { object-position: calc(var(--pose, 0) * 50%) 0; }
+
 /* From the back: the backdrop, shrooms and lying bombs, robots, projectiles, the player,
    thrown bombs, explosions. */
 .piece.heart,
@@ -150,7 +154,11 @@ body {
   color: var(--grey);
 }
 
-.status { grid-column-end: span 30; }
+/* Lives and held bombs as icons: two tallies side by side. An icon is a square as high as
+   the text row, so it never leaves the row. */
+.status { grid-column-end: span 30; display: flex; gap: calc(var(--cw) * 3); }
+.tally { display: flex; gap: calc(var(--cw) * 0.25); }
+.icon { width: var(--ch); height: var(--ch); }
 .score { grid-column-end: span 12; }
 
 /* ---- backdrop: decoration behind the pieces; nothing in it touches the game ---- */

@@ -37,6 +37,7 @@ export const LATER_INTERVAL_MIN = 90;           // ms per step of the fourth and
 export const LATER_INTERVAL_MAX = 150;          // picked at random, both ends included
 export const REPEAT_DELAY = 180;                 // ms from a press to the second cell
 export const REPEAT_EVERY = 60;                  // ms between the cells after that
+export const STRIDE_MS = 120;                    // how long each pose of the player's walk is drawn
 export const LIVES = 3;
 export const SAFE_MS = 3000;                     // the player flickers and cannot lose a life
 export const RESPAWN_DISTANCE = 15;              // cells from every enemy, the larger of dx and dy
@@ -77,7 +78,7 @@ export function createGame(random = Math.random) {
     goal: null,
     lives: LIVES,
     bombs: 0,
-    player: { ...PLAYER_START, steps: 0, facing: 'right', safeUntil: 0, safeEndPending: false },
+    player: { ...PLAYER_START, steps: 0, facing: 'right', safeUntil: 0, safeEndPending: false, walkSince: null },
     hearts: COLOURS.map((colour) => ({ colour, x: 0, y: 0 })),
     enemies: [newEnemy(1, 0, random)],
     arrivals: 1,
@@ -105,6 +106,19 @@ export function positionAt(piece, time) {
     x: piece.fromX + (piece.x - piece.fromX) * part,
     y: piece.fromY + (piece.y - piece.fromY) * part,
   };
+}
+
+// The pose to draw the player in: 0 standing, 1 and 2 the two strides of his walk. A walk
+// starts with a move made while he stands (player.walkSince) and is drawn in whole strides
+// of STRIDE_MS, 1 then 2 and so on. It ends with the stride in which his last move becomes
+// REPEAT_DELAY old, so a held key keeps him walking from the press through every repeat,
+// and he stands less than REPEAT_DELAY + STRIDE_MS after his last move.
+export function playerPose(game) {
+  const { walkSince, movedAt } = game.player;
+  if (walkSince === null) return 0;
+  const strides = Math.ceil((movedAt + REPEAT_DELAY - walkSince) / STRIDE_MS);
+  const stride = Math.floor((game.time - walkSince) / STRIDE_MS);
+  return stride < strides ? 1 + (stride % 2) : 0;
 }
 
 // The SAFE_MS after the player reappears, when no life can be taken.
@@ -289,20 +303,24 @@ function movePlayer(game, dir) {
   const y = wrapY(player.y + dy);
   // Across an edge the player is drawn on the new cell at once, not across the board.
   const wrapped = x !== player.x + dx || y !== player.y + dy;
+  if (playerPose(game) === 0) player.walkSince = game.time; // a move while standing starts a walk
   glide(game, player, wrapped ? 0 : REPEAT_EVERY, () => {
     player.x = x;
     player.y = y;
   });
   player.facing = dir;
 
-  for (const heart of game.hearts) {
-    if (!sameCell(heart, player)) continue;
-    if (heart.colour === game.goal) {
-      game.score += GOAL_POINTS;
-      game.events.push('goal');
-      placeHeart(game, heart);
-      pickGoal(game);
-    } else {
+  // Two shrooms can lie on one cell. All of them are judged against the goal as it was
+  // named when he stepped on: with the goal's shroom among them the step is right, once,
+  // and none of them counts as wrong.
+  const taken = game.hearts.filter((heart) => sameCell(heart, player));
+  if (taken.some((heart) => heart.colour === game.goal)) {
+    game.score += GOAL_POINTS;
+    game.events.push('goal');
+    for (const heart of taken) placeHeart(game, heart);
+    pickGoal(game);
+  } else {
+    for (const heart of taken) {
       game.score -= WRONG_HEART_POINTS;
       game.events.push('error');
       placeHeart(game, heart);
@@ -420,7 +438,7 @@ function hitPlayer(game) {
   }
   game.events.push('life-lost');
   Object.assign(game.player, respawnCell(game), {
-    glideMs: 0, safeUntil: game.time + SAFE_MS, safeEndPending: true,
+    glideMs: 0, safeUntil: game.time + SAFE_MS, safeEndPending: true, walkSince: null,
   });
 }
 

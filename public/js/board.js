@@ -5,7 +5,7 @@
 // of each to the point positionAt gives, and the CSS centres the image there, so pieces
 // glide between cells.
 
-import { EXPLOSION_MS, isExpiring, isSafe, positionAt } from './game.js';
+import { EXPLOSION_MS, isExpiring, isSafe, playerPose, positionAt } from './game.js';
 
 const COLUMNS = 100;
 const FRAME_BOTTOM = 31;
@@ -13,15 +13,17 @@ const TEXT_ROW = 32;
 const STATUS_COLUMN = 2;
 const SCORE_COLUMN = 89;
 const FLIGHT_LIFT_ROWS = 2; // a thrown bomb rises this high in the middle of its flight
+const MOST_ICONS = 5;       // a count above this shows as one icon and the number
 
 const IMAGES = {
-  player: 'img/player.png',
+  player: 'img/player-walk.png',
   robot: 'img/robot.png',
   shooter: 'img/robot-shooter.png',
   red: 'img/mushroom-red.png',
   blue: 'img/mushroom-blue.png',
   cyan: 'img/mushroom-cyan.png',
   bomb: 'img/bomb.png',
+  life: 'img/life.png',
   projectile: 'img/projectile.png',
   explosion: 'img/explosion.png',
 };
@@ -57,6 +59,10 @@ export function createBoard(container) {
   const hearts = ['red', 'blue', 'cyan'].map((colour) => pieceImage(`heart ${colour}`, IMAGES[colour]));
   const player = pieceImage('player', IMAGES.player);
   const status = textCell('status', STATUS_COLUMN);
+  status.setAttribute('role', 'img'); // one picture to a screen reader; draw() writes its label
+  const lives = tally('lives', IMAGES.life);
+  const bombs = tally('bombs', IMAGES.bomb);
+  status.append(lives.element, bombs.element);
   const score = textCell('score', SCORE_COLUMN);
   fragment.append(...hearts, player, status, score);
   container.append(fragment);
@@ -104,10 +110,42 @@ export function createBoard(container) {
       }
 
       moveTo(player, positionAt(game.player, time));
+      setVar(player, '--pose', playerPose(game));
       player.classList.toggle('flicker', isSafe(game));
 
-      setText(status, `lives: ${game.lives}   bombs: ${game.bombs}`);
+      lives.show(game.lives);
+      bombs.show(game.bombs);
+      setLabel(status, `lives ${game.lives}, bombs ${game.bombs}`);
       setText(score, `score: ${game.score}`);
+    },
+  };
+}
+
+// How a count shows in the row under the frame: one icon for each up to MOST_ICONS, above
+// that one icon and the number.
+export function tallyOf(count) {
+  return count > MOST_ICONS ? { icons: 1, number: String(count) } : { icons: Math.max(count, 0), number: '' };
+}
+
+// One count of the row under the frame, drawn as icons. Hidden from a screen reader: the
+// row's label says both counts in words.
+function tally(word, src) {
+  const element = document.createElement('span');
+  element.className = `tally ${word}`;
+  element.setAttribute('aria-hidden', 'true');
+  let shown = null;
+  return {
+    element,
+    show(count) {
+      if (count === shown) return;
+      shown = count;
+      const { icons, number } = tallyOf(count);
+      element.replaceChildren(...Array.from({ length: icons }, () => image('icon', src)));
+      if (!number) return;
+      const digits = document.createElement('span');
+      digits.className = 'number';
+      digits.textContent = number;
+      element.append(digits);
     },
   };
 }
@@ -192,6 +230,10 @@ function moveTo(element, { x, y }) {
 function setVar(element, name, value) {
   const text = String(Math.round(value * 1000) / 1000);
   if (element.style.getPropertyValue(name) !== text) element.style.setProperty(name, text);
+}
+
+function setLabel(element, text) {
+  if (element.getAttribute('aria-label') !== text) element.setAttribute('aria-label', text);
 }
 
 function setText(element, text) {

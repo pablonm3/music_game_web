@@ -4,7 +4,7 @@
 export const CLIPS = {
   'voice-red': 'audio/voice/red.mp3',
   'voice-blue': 'audio/voice/blue.mp3',
-  'voice-cyan': 'audio/voice/cyan.mp3',
+  'voice-cyan': 'audio/voice/cyan-v2.mp3',
   error: 'audio/nextGoal/error.mp3',
   enemy: 'audio/enemy.mp3',
   record: 'audio/record.mp3',
