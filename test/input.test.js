@@ -107,7 +107,7 @@ describe('stickDirection', () => {
     assert.equal(at(-170), 'left');
   });
 
-  it('gives none at the middle and up to `centre` px from it', () => {
+  it('gives none at the middle and up to `deadZone` px from it', () => {
     assert.equal(stickDirection(0, 0, 20), null);
     assert.equal(stickDirection(20, 0, 20), null);
     assert.equal(stickDirection(12, -16, 20), null, '20 px away');

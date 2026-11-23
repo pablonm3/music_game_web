@@ -102,10 +102,10 @@ const STICK_DIRECTIONS = ['right', 'downRight', 'down', 'downLeft', 'left', 'upL
 const EIGHTH_TURN = Math.PI / 4;
 
 // The direction a finger `dx`, `dy` px from the joystick's middle asks for: the nearest
-// of the eight, or null within `centre` px of the middle. There is no outer limit, so a
+// of the eight, or null within `deadZone` px of the middle. There is no outer limit, so a
 // finger that slid off the joystick still steers.
-export function stickDirection(dx, dy, centre) {
-  if (Math.hypot(dx, dy) <= centre) return null;
+export function stickDirection(dx, dy, deadZone) {
+  if (Math.hypot(dx, dy) <= deadZone) return null;
   const eighths = Math.round(Math.atan2(dy, dx) / EIGHTH_TURN); // -4 to 4
   return STICK_DIRECTIONS[(eighths + 8) % 8];
 }
@@ -145,8 +145,8 @@ export function attachJoystick(stick, held, onAction) {
   const read = (event) => {
     const box = stick.getBoundingClientRect();
     const radius = box.width / 2;
-    const centre = radius * (dir === null ? PUSH_AT : REST_AT);
-    steer(stickDirection(event.clientX - box.left - radius, event.clientY - box.top - radius, centre));
+    const deadZone = radius * (dir === null ? PUSH_AT : REST_AT);
+    steer(stickDirection(event.clientX - box.left - radius, event.clientY - box.top - radius, deadZone));
   };
   const release = (event) => {
     if (event.pointerId !== finger) return;

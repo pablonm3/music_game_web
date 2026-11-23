@@ -34,10 +34,12 @@ html.touch {
   --ch: min(var(--view-height) / 33, var(--cw) / var(--aspect));
   --stick: 120px; /* the joystick's width and height */
   --edge: 8px;    /* between a control and the terminal's side, and the frame's bottom row */
+  /* room between the two bottom-corner controls */
+  --between-controls: calc(var(--cw) * 100 - (var(--stick) + var(--edge)) * 2);
   /* Text screens: twice the cell's smaller side, so a row still holds 83 characters and
-     the screen 16 lines; and small enough for a 50 character line (30 times the text
-     size wide) to fit between the controls of the two corners. */
-  --text: min(var(--cw) * 2, var(--ch) * 2, (var(--cw) * 100 - (var(--stick) + var(--edge)) * 2) / 30);
+     the screen 16 lines; and small enough for a 50 character line to fit between the
+     controls (50 characters × 0.6 glyph width = 30 times the text size). */
+  --text: min(var(--cw) * 2, var(--ch) * 2, var(--between-controls) / 30);
 }
 
 [hidden] { display: none !important; }
