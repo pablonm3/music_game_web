@@ -1,7 +1,7 @@
-// The text screens: menu, how to play, leaderboard. A screen is a list of lines; the
-// line builders have no DOM, renderLines draws them. Every screen fits in 16 lines of
-// 50 characters (a large line counts as three), so it still fits at twice the size on
-// a phone.
+// The text screens: menu, the legend PLAY opens, how to play (the legend, then the rules),
+// leaderboard. A screen is a list of lines; the line builders have no DOM, renderLines
+// draws them. Every screen fits in 16 lines of 50 characters (a large line counts as
+// three), so it still fits at twice the size on a phone.
 //
 // A line is {text, large?, highlight?, tone?} or {parts: [{text, highlight?}], large?}.
 // A highlighted line is drawn in inverse colours and starts with '>'.
@@ -12,7 +12,7 @@ const BLANK = { text: '' };
 
 export function menuLines(selected) {
   return [
-    { text: 'MUSIC GAME', large: true, tone: 'title' },
+    { text: 'PROGRAMMER SAVE HUMANITY', large: true, tone: 'title' },
     BLANK,
     ...MENU_ENTRIES.map((entry, i) => choice(entry, i === selected, { large: true })),
     BLANK,
@@ -32,11 +32,53 @@ export const HOW_TO_PLAY_LINES = [
   { text: 'SHOOT. A TOUCH OR A SHOT COSTS A LIFE. EDGES WRAP.' },
   BLANK,
   { text: 'PICK UP BOMBS BEFORE THEY VANISH. A THROWN BOMB' },
-  { text: 'LANDS 12 CELLS AHEAD AND BLOWS UP ROBOTS AND SHOTS' },
+  { text: 'LANDS 14 CELLS AHEAD AND BLOWS UP ROBOTS AND SHOTS' },
   { text: 'AROUND IT. STAND CLEAR: IT COSTS A LIFE.' },
   BLANK,
   { text: 'MOVE: ARROWS, Q E A D (PHONE: THE PAD)' },
   { text: 'BOMB: SPACE (PHONE: BOMB)   ESC: MENU', tone: 'hint' },
+];
+
+// The legend, as laid out on screen: one string per line, broken between its sentences
+// and inside them at a space.
+const LEGEND = [
+  '2027, THE WORLD HAS BEEN TAKEN BY AI',
+  'AND YOU ARE THE LAST HOPE.',
+  'LISTEN CAREFULLY TO THE MUSIC AND COLLECT THE',
+  'MUSHROOMS OF THE CORRECT COLOUR TO HELP HUMANITY',
+  'REGAIN THEIR LOST CONSCIOUSNESS AND SAVE US.',
+  'MUSHROOMS OF THE WRONG COLOUR ARE POISONOUS.',
+];
+
+export const LEGEND_LENGTH = LEGEND.reduce((sum, line) => sum + line.length, 0);
+const LEGEND_MS_PER_CHARACTER = 30;
+
+// How many characters of the legend are written `ms` after its screen opened.
+export function legendWrittenAt(ms) {
+  return Math.min(LEGEND_LENGTH, Math.floor(ms / LEGEND_MS_PER_CHARACTER));
+}
+
+// The legend with its first `written` characters, in reading order. Spaces stand in for
+// the rest: a line has its full length from the start, so its centred text never moves.
+function legendText(written) {
+  let above = 0; // characters on the lines above this one
+  return LEGEND.map((line) => {
+    const shown = line.slice(0, Math.max(0, written - above));
+    above += line.length;
+    return { text: shown.padEnd(line.length) };
+  });
+}
+
+// The screen PLAY opens.
+export function legendLines(written) {
+  return [...legendText(written), BLANK, { text: 'PRESS ENTER TO START', tone: 'hint' }];
+}
+
+// The first screen of HOW TO PLAY; ENTER goes on to HOW_TO_PLAY_LINES.
+export const HOW_TO_PLAY_LEGEND_LINES = [
+  ...legendText(LEGEND_LENGTH),
+  BLANK,
+  { text: 'ENTER: RULES   ESC: MENU', tone: 'hint' },
 ];
 
 // The ranked list, shared by the leaderboard screen and the screen after a game.

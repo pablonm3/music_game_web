@@ -8,11 +8,12 @@ import { createBoard } from './board.js';
 import { advance, createGame, press, setRepeat, throwBomb } from './game.js';
 import { attachButtons, attachKeys, createHeld } from './input.js';
 import {
-  HOW_TO_PLAY_LINES, leaderboardLines, MENU_ENTRIES, menuLines, renderLines,
+  HOW_TO_PLAY_LEGEND_LINES, HOW_TO_PLAY_LINES, leaderboardLines, LEGEND_LENGTH, legendLines, legendWrittenAt,
+  MENU_ENTRIES, menuLines, renderLines,
 } from './screens.js';
 
-// A frame never runs more than this much game time, so a hidden tab pauses the game
-// instead of letting the enemy catch up in one jump.
+// A frame never runs more than this much of the clock of the screen on show, so a hidden
+// tab pauses the game instead of letting the enemy catch up in one jump.
 const MAX_FRAME_MS = 250;
 
 const params = new URLSearchParams(location.search);
@@ -25,9 +26,10 @@ const boardElement = document.getElementById('board');
 const textElement = document.getElementById('text');
 const audio = createAudio();
 const api = createApi();
-const board = createBoard(boardElement);
+const board = createBoard(boardElement, { touch: touchMode });
 
-let screen = null; // {name, onAction}
+let screen = null; // {name, onAction, onTime?, status?}: onTime(ms) runs the screen's
+                   // clock, status() adds to the test mode status line
 let game = null;
 let afterGame = null;
 
@@ -51,7 +53,7 @@ function openMenu(selected = 0) {
   leaveAfterGame();
   let highlighted = selected;
   const draw = () => showText(menuLines(highlighted));
-  const open = [startGame, openLeaderboard, openHowToPlay];
+  const open = [openLegend, openLeaderboard, openHowToPlay];
   draw();
   screen = {
     name: 'menu',
@@ -67,7 +69,44 @@ function openMenu(selected = 0) {
   };
 }
 
+// The legend PLAY opens, written one character at a time on the screen's clock. ENTER
+// starts the game, written or not; ESC goes back to the menu.
+function openLegend() {
+  game = null; // no game yet: the one that ended, if any, is not shown as current
+  let elapsed = 0;
+  let written = 0;
+  showText(legendLines(written));
+  screen = {
+    name: 'legend',
+    onAction(action) {
+      if (action.type === 'confirm') startGame();
+      else if (action.type === 'back') openMenu(MENU_ENTRIES.indexOf('PLAY'));
+    },
+    onTime(ms) {
+      if (!(ms > 0)) return;
+      elapsed += ms;
+      const now = legendWrittenAt(elapsed);
+      if (now === written) return;
+      written = now;
+      showText(legendLines(written));
+    },
+    status: () => `written=${written}/${LEGEND_LENGTH}`,
+  };
+}
+
+// HOW TO PLAY opens on the legend; ENTER shows the rules.
 function openHowToPlay() {
+  showText(HOW_TO_PLAY_LEGEND_LINES);
+  screen = {
+    name: 'how-to-play-legend',
+    onAction(action) {
+      if (action.type === 'confirm') openHowToPlayRules();
+      else if (action.type === 'back') openMenu(MENU_ENTRIES.indexOf('HOW TO PLAY'));
+    },
+  };
+}
+
+function openHowToPlayRules() {
   showText(HOW_TO_PLAY_LINES);
   screen = {
     name: 'how-to-play',
@@ -106,6 +145,7 @@ function startGame() {
       else if (action.type === 'repeat') setRepeat(game, action.dir);
       else if (action.type === 'bomb') throwBomb(game);
     },
+    onTime: (ms) => advance(game, ms),
   };
 }
 
@@ -146,15 +186,15 @@ attachKeys(window, held, onAction);
 attachButtons(document.getElementById('controls'), held, onAction);
 
 const debug = debugMode
-  ? (await import('./debug.js')).installDebug({ getGame: () => game, getScreen: () => screen.name, audio })
+  ? (await import('./debug.js')).installDebug({ getGame: () => game, getScreen: () => screen, audio })
   : null;
 
 let lastFrame = performance.now();
 function frame(now) {
   const elapsed = Math.min(Math.max(now - lastFrame, 0), MAX_FRAME_MS);
   lastFrame = now;
+  if (!debugMode) screen.onTime?.(elapsed); // test mode: only mg.advance runs a clock
   if (screen.name === 'game') {
-    if (!debugMode) advance(game, elapsed);
     playEvents();
     board.draw(game);
   }

@@ -136,12 +136,13 @@ body {
 .flicker { animation: flicker 0.3s steps(1) infinite; }
 @keyframes flicker { 50% { opacity: 0.25; } }
 
-/* 17 columns by 11 rows: the blast area of 8 columns and 5 rows each way. --part runs
-   from 0 to 1 over the explosion's time on the game clock. */
+/* 25 columns by 16 rows: the blast's ellipse of 12 columns and 7.5 rows each way from the
+   middle of the bomb's cell, and half a cell more each way, so a piece on its edge is
+   inside whole. --part runs from 0 to 1 over the explosion's time on the game clock. */
 .explosion {
   z-index: 6;
-  width: calc(var(--cw) * 17);
-  height: calc(var(--ch) * 11);
+  width: calc(var(--cw) * 25);
+  height: calc(var(--ch) * 16);
   transform: translate(calc((var(--x) - 0.5) * var(--cw) - 50%),
                        calc((var(--y) + 0.5) * var(--ch) - 50%))
              scale(calc(0.2 + 0.8 * var(--part)));
@@ -149,7 +150,8 @@ body {
 }
 
 .status,
-.score {
+.score,
+.bomb-hint {
   white-space: pre;
   color: var(--grey);
 }
@@ -160,6 +162,9 @@ body {
 .tally { display: flex; gap: calc(var(--cw) * 0.25); }
 .icon { width: var(--ch); height: var(--ch); }
 .score { grid-column-end: span 12; }
+/* The throw hint, columns 32 to 69: clear of the tallies and the score, its middle under
+   the board's. */
+.bomb-hint { grid-column-end: span 38; text-align: center; }
 
 /* ---- backdrop: decoration behind the pieces; nothing in it touches the game ---- */
 

@@ -17,7 +17,7 @@ describe('static files', () => {
     assert.match(response.headers.get('content-type'), /^text\/html/);
     assert.equal(response.headers.get('cache-control'), 'no-cache');
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-    assert.match(await response.text(), /<title>MUSIC GAME<\/title>/);
+    assert.match(await response.text(), /<title>PROGRAMMER SAVE HUMANITY<\/title>/);
   });
 
   it('serves modules with a JavaScript type', async () => {

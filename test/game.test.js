@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  advance, chase, COLOURS, createGame, isExpiring, isSafe, playerPose, positionAt, press, REPEAT_DELAY, setRepeat, STRIDE_MS, throwBomb,
+  advance, chase, COLOURS, createGame, isExpiring, isSafe, playerPose, positionAt, press, REPEAT_DELAY, setRepeat, showsBombHint,
+  STRIDE_MS, throwBomb,
 } from '../public/js/game.js';
 
 // Returns the given values in order, then `rest` forever.
@@ -682,12 +683,14 @@ describe('bombs', () => {
     assert.equal(game.bombs, 8);
   });
 
-  it('throws 12 cells in the direction of the last move, right before any, stopping before the frame', () => {
+  it('throws 14 cells in the direction of the last move, right before any, stopping before the frame', () => {
     const cases = [
-      [[50, 17], null, [62, 17]],
+      [[50, 17], null, [64, 17]],
       [[95, 17], null, [99, 17]],
       [[51, 6], 'upRight', [56, 1]],
-      [[50, 20], 'left', [37, 20]],
+      [[50, 20], 'left', [35, 20]],
+      [[50, 17], 'upRight', [65, 2]],
+      [[50, 20], 'up', [50, 5]],
     ];
     for (const [start, dir, landing] of cases) {
       const game = quietGame();
@@ -715,41 +718,118 @@ describe('bombs', () => {
     game.bombs = 1;
     throwBomb(game);
     advance(game, 500);
-    assert.deepEqual(positionAt(game.thrownBombs[0], game.time), { x: 56, y: 17 });
+    assert.deepEqual(positionAt(game.thrownBombs[0], game.time), { x: 57, y: 17 });
+  });
+
+  // Moves the player one cell towards `dir`, with no repeat after it.
+  function step(game, dir) {
+    press(game, dir);
+    setRepeat(game, null);
+  }
+
+  it('leaves a thrower who stands still clear of a throw to the side', () => {
+    const right = quietGame();
+    right.bombs = 1;
+    throwBomb(right);
+    assert.deepEqual(cells(right.thrownBombs), ['64,17']);
+    advance(right, 1000);
+    assert.equal(right.lives, 3);
+
+    const left = quietGame();
+    step(left, 'left');
+    left.bombs = 1;
+    throwBomb(left);
+    assert.deepEqual(cells(left.thrownBombs), ['35,17']);
+    advance(left, 1000);
+    assert.equal(left.lives, 3);
+
+    // One step towards the bomb during its flight is still clear, two are not.
+    for (const [steps, lives] of [[1, 3], [2, 2]]) {
+      const game = quietGame();
+      game.bombs = 1;
+      throwBomb(game);
+      for (let i = 0; i < steps; i += 1) step(game, 'right');
+      advance(game, 1000);
+      assert.equal(game.lives, lives, `${steps} steps`);
+    }
+  });
+
+  it('reaches a thrower when the frame stops the bomb short', () => {
+    for (const [x, lives] of [[87, 2], [86, 3]]) {
+      const game = quietGame();
+      Object.assign(game.player, { x, y: 17 });
+      game.bombs = 1;
+      throwBomb(game);
+      assert.deepEqual(cells(game.thrownBombs), ['99,17']);
+      advance(game, 1000);
+      assert.equal(game.lives, lives, `from ${x}`);
+    }
+  });
+
+  it('shows the throw hint from the first bomb held until the first throw of the game', () => {
+    const pickUp = (game) => {
+      const { x, y } = game.player;
+      game.lyingBombs.push({ x: x + 1, y, placedAt: game.time });
+      step(game, 'right');
+    };
+    const game = quietGame();
+    assert.equal(showsBombHint(game), false);
+    throwBomb(game); // with no bomb held: not a throw
+    pickUp(game);
+    assert.equal(game.bombs, 1);
+    assert.equal(showsBombHint(game), true);
+    advance(game, 5000);
+    assert.equal(showsBombHint(game), true);
+    pickUp(game);
+    assert.equal(game.bombs, 2);
+    assert.equal(showsBombHint(game), true);
+    throwBomb(game);
+    assert.equal(game.bombs, 1);
+    assert.equal(showsBombHint(game), false, 'gone at the throw, a bomb still held');
+    pickUp(game);
+    assert.equal(game.bombs, 2);
+    assert.equal(showsBombHint(game), false, 'not again in this game');
+
+    const next = quietGame();
+    pickUp(next);
+    assert.equal(showsBombHint(next), true, 'back in a new game');
   });
 
   describe('explosion', () => {
-    // A bomb thrown from (50, 17) lands on (62, 17) and explodes 1 s later.
+    // A bomb thrown from (50, 17) lands on (64, 17) and explodes 1 s later. The thrower
+    // stays on (50, 17), outside the blast.
     function blastGame() {
       const game = quietGame();
       game.enemies.length = 0;
       const enemy = (x, y) => ({ x, y, interval: 150, nextStepAt: Infinity, steps: 0 });
-      for (const [x, y] of [[58, 17], [70, 17], [62, 22], [66, 20], [71, 17], [62, 23], [68, 21]]) {
+      const inside = [[60, 17], [76, 17], [64, 24], [68, 24], [74, 21]];
+      const outside = [[77, 17], [64, 25], [69, 24], [75, 20]];
+      for (const [x, y] of [...inside, ...outside]) {
         game.enemies.push(enemy(x, y));
       }
-      game.projectiles.push({ x: 60, y: 16, originX: 60, originY: 16, dirX: 0, dirY: 1, steps: 0, nextStepAt: Infinity });
-      game.lyingBombs.push({ x: 63, y: 18, placedAt: 0 });
-      Object.assign(heart(game, 'red'), { x: 61, y: 17 });
+      game.projectiles.push({ x: 62, y: 16, originX: 62, originY: 16, dirX: 0, dirY: 1, steps: 0, nextStepAt: Infinity });
+      game.lyingBombs.push({ x: 65, y: 18, placedAt: 0 });
+      Object.assign(heart(game, 'red'), { x: 63, y: 17 });
       game.bombs = 1;
       throwBomb(game);
       return game;
     }
 
-    it('removes the enemies and projectiles inside 8 columns and 5 rows after 1 s, nothing else', () => {
+    it('removes the enemies and projectiles inside 12 columns and 7.5 rows after 1 s, nothing else', () => {
       const game = blastGame();
       advance(game, 999);
-      assert.equal(game.enemies.length, 7);
+      assert.equal(game.enemies.length, 9);
       assert.deepEqual(game.events, []);
       advance(game, 1);
-      assert.deepEqual(cells(game.enemies), ['62,23', '68,21', '71,17']);
+      assert.deepEqual(cells(game.enemies), ['64,25', '69,24', '75,20', '77,17']);
       assert.deepEqual(game.projectiles, []);
-      assert.deepEqual(cell(heart(game, 'red')), [61, 17]);
-      assert.deepEqual(cells(game.lyingBombs), ['63,18']);
+      assert.deepEqual(cell(heart(game, 'red')), [63, 17]);
+      assert.deepEqual(cells(game.lyingBombs), ['65,18']);
       assert.deepEqual(game.thrownBombs, []);
       assert.equal(game.score, 0);
       assert.equal(game.lives, 3);
       assert.deepEqual(game.events, ['explosion']);
-      assert.deepEqual(game.explosions, [{ x: 62, y: 17, at: 1000 }]);
+      assert.deepEqual(game.explosions, [{ x: 64, y: 17, at: 1000 }]);
       advance(game, 599);
       assert.equal(game.explosions.length, 1);
       advance(game, 1);

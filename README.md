@@ -1,10 +1,10 @@
 # music_game_web
 
-Web version of [music_game](https://github.com/pablonm3/music_game), a Windows console game from 2019, playable in a browser, with a start menu, a shared top-10 leaderboard and touch controls for phones. It keeps the original's board, scoring, chase rule and music, and adds lives, more enemies, shooters and bombs.
+Web version of [music_game](https://github.com/pablonm3/music_game), a Windows console game from 2019, playable in a browser as *Programmer Save Humanity*, with a start menu, a shared top-10 leaderboard and touch controls for phones. It keeps the original's board, scoring, chase rule and music, and adds lives, more enemies, shooters and bombs. `PLAY` first shows the game's legend (2027, the world taken by AI, the mushrooms that bring humanity back), written letter by letter: Enter starts the game, Escape goes back to the menu. `HOW TO PLAY` opens on the same legend, with the rules one Enter away.
 
 The pieces are photo-like images that glide from cell to cell over a moving picture of the Amazon rainforest, with monkeys, birds and flies in it: a bald guy in a white t-shirt (the player, whose feet move while he walks), three shrooms that are photos of three real mushrooms, and skeleton robots. Under the frame, one heart for each life left and one bomb for each held bomb (from 6 bombs on, one bomb and the number). The frame, the score and the text screens keep the terminal look.
 
-A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15 (when two shrooms lie on one cell and one of them is the named one, the step counts as right). Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. A bomb comes with every third robot; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. The edges wrap around. Sound is required.
+A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15 (when two shrooms lie on one cell and one of them is the named one, the step counts as right). Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. A bomb comes with every third robot; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. Until the first bomb of a game is thrown, a line under the frame tells how to throw it. The edges wrap around. Sound is required.
 
 ## Run it
 
@@ -25,12 +25,12 @@ Environment variables:
 
 URL switches:
 
-- `?debug=1` test mode: the game clock stands still, a status line shows the game state, and the browser console has `mg.advance(ms)` to run the clock (and with it every timed effect: shots, bombs, the safe time) and `mg.game` for the state of the current game. The status line shows `lives=`, `bombs=` (held), `player=`, `safe=` (while the player flickers), `enemies=` (a shooter's cell ends in `s`), `shrooms=`, `lying=` (bombs on the board, `f` when flickering), `thrown=` (landing cells of bombs in the air) and `projectiles=`; `-` is an empty list.
+- `?debug=1` test mode: the game clock stands still, a status line shows the game state, and the browser console has `mg.advance(ms)` to run the clock (and with it every timed effect: shots, bombs, the safe time; on the legend, its writing) and `mg.game` for the state of the current game. On the legend the status line shows `written=<n>/<total>`. The status line shows `lives=`, `bombs=` (held), `player=`, `safe=` (while the player flickers), `enemies=` (a shooter's cell ends in `s`), `shrooms=`, `lying=` (bombs on the board, `f` when flickering), `thrown=` (landing cells of bombs in the air) and `projectiles=`; `-` is an empty list.
 - `?touch=1` the phone layout (square cells, the direction pad, `ESC`, `ENTER` and `BOMB` buttons) on any device. It is on by itself on touch devices.
 
 ## Controls
 
-Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 ms. Space throws a bomb 12 cells in the direction of your last move (`BOMB` on a phone). Enter and Escape in the menus. A name for the leaderboard is one to five letters: type it, or use up and down to change the selected letter (past `Z` or `A` on the last letter removes it) and left and right to move.
+Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 ms. Space throws a bomb 14 cells in the direction of your last move (`BOMB` on a phone), or to the last cell before the frame; its blast reaches 12 columns and 7 rows around the cell it lands on, so a throw to the side leaves you clear unless the frame stops the bomb short. Enter and Escape in the menus. A name for the leaderboard is one to five letters: type it, or use up and down to change the selected letter (past `Z` or `A` on the last letter removes it) and left and right to move.
 
 ## Layout
 

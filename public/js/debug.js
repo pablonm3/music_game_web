@@ -1,9 +1,12 @@
-// Test mode, loaded only with ?debug=1: the game clock stands still (main.js does not
-// advance it), a status line shows the state as text, and window.mg drives the clock:
-//   mg.advance(ms)   runs the clock of the current game, and with it every timed effect
-//   mg.game          the state object of the current game (a new one after every PLAY)
+// Test mode, loaded only with ?debug=1: the clock of the screen on show stands still
+// (main.js does not run it), a status line shows the state as text, and window.mg drives
+// the clock:
+//   mg.advance(ms)   runs the clock of the screen on show: on the game screen the game's,
+//                    and with it every timed effect; on the legend its writing
+//   mg.game          the state object of the current game (a new one after every PLAY;
+//                    null while the legend shows)
 
-import { advance, isExpiring, isSafe } from './game.js';
+import { isExpiring, isSafe } from './game.js';
 
 export function installDebug({ getGame, getScreen, audio }) {
   const line = document.createElement('div');
@@ -15,8 +18,7 @@ export function installDebug({ getGame, getScreen, audio }) {
       return getGame();
     },
     advance(ms) {
-      const game = getGame();
-      if (game) advance(game, ms);
+      getScreen().onTime?.(ms);
     },
   };
 
@@ -30,9 +32,11 @@ export function installDebug({ getGame, getScreen, audio }) {
 
 // The state as text. Cells are x,y; a shooter's ends in `s`, a lying bomb that flickers
 // in `f`; `thrown=` lists the landing cells of bombs in the air; `-` is an empty list.
-// The shrooms are game.hearts in the code.
+// The shrooms are game.hearts in the code. A screen may add its own part (the legend:
+// `written=<n>/<total>`).
 function statusText(screen, game, sound) {
-  const parts = ['DEBUG', `screen=${screen}`];
+  const parts = ['DEBUG', `screen=${screen.name}`];
+  if (screen.status) parts.push(screen.status());
   if (game) {
     parts.push(
       `t=${Math.round(game.time)}ms`,

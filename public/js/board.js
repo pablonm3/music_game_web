@@ -1,16 +1,17 @@
 // Draws the game screen. A 100 by 33 grid of fixed-size cells (grid column = x, grid row
-// = y + 1) holds the frame and the text under it, in the terminal look. Behind the
-// playable cells lies the backdrop: a picture of the rainforest with animals moving over
-// it, decoration only. The pieces are images laid over the grid: draw() sets --x and --y
-// of each to the point positionAt gives, and the CSS centres the image there, so pieces
-// glide between cells.
+// = y + 1) holds the frame and the row under it (lives and held bombs, the throw hint, the
+// score), in the terminal look. Behind the playable cells lies the backdrop: a picture of
+// the rainforest with animals moving over it, decoration only. The pieces are images laid
+// over the grid: draw() sets --x and --y of each to the point positionAt gives, and the
+// CSS centres the image there, so pieces glide between cells.
 
-import { EXPLOSION_MS, isExpiring, isSafe, playerPose, positionAt } from './game.js';
+import { EXPLOSION_MS, isExpiring, isSafe, playerPose, positionAt, showsBombHint } from './game.js';
 
 const COLUMNS = 100;
 const FRAME_BOTTOM = 31;
 const TEXT_ROW = 32;
 const STATUS_COLUMN = 2;
+const HINT_COLUMN = 32; // the hint has columns 32 to 69: past the tallies, its middle under the board's
 const SCORE_COLUMN = 89;
 const FLIGHT_LIFT_ROWS = 2; // a thrown bomb rises this high in the middle of its flight
 const MOST_ICONS = 5;       // a count above this shows as one icon and the number
@@ -40,7 +41,13 @@ const CRITTERS = [
   ['flies flies-3', 'img/flies.png'],
 ];
 
-export function createBoard(container) {
+// The words of the hint under the frame. The phone layout has a BOMB button and no Space.
+export function bombHintText(touch) {
+  return touch ? 'PRESS THE BOMB BUTTON TO THROW BOMB' : 'PRESS SPACE TO THROW BOMB';
+}
+
+// `touch`: the phone layout, which picks the words of the throw hint.
+export function createBoard(container, { touch = false } = {}) {
   container.replaceChildren();
   // Loaded once now, so a piece that first appears mid-game does not pop in late.
   const preloaded = Object.values(IMAGES).map((src) => Object.assign(new Image(), { src }));
@@ -63,8 +70,11 @@ export function createBoard(container) {
   const lives = tally('lives', IMAGES.life);
   const bombs = tally('bombs', IMAGES.bomb);
   status.append(lives.element, bombs.element);
+  const hint = textCell('bomb-hint', HINT_COLUMN);
+  hint.textContent = bombHintText(touch);
+  hint.hidden = true;
   const score = textCell('score', SCORE_COLUMN);
-  fragment.append(...hearts, player, status, score);
+  fragment.append(...hearts, player, status, hint, score);
   container.append(fragment);
 
   // One element per object of the game's lists, made when the object first shows.
@@ -116,6 +126,7 @@ export function createBoard(container) {
       lives.show(game.lives);
       bombs.show(game.bombs);
       setLabel(status, `lives ${game.lives}, bombs ${game.bombs}`);
+      setHidden(hint, !showsBombHint(game));
       setText(score, `score: ${game.score}`);
     },
   };
@@ -238,4 +249,8 @@ function setLabel(element, text) {
 
 function setText(element, text) {
   if (element.textContent !== text) element.textContent = text;
+}
+
+function setHidden(element, hidden) {
+  if (element.hidden !== hidden) element.hidden = hidden;
 }

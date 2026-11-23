@@ -46,10 +46,10 @@ export const PROJECTILE_STEP = 80;               // ms per cell of a projectile
 export const BOMB_EVERY = 3;                     // a bomb comes with every third arrival
 export const BOMB_STEADY_MS = 10_000;            // a lying bomb, then
 export const BOMB_FLICKER_MS = 2000;             // flickering, then gone
-export const THROW_CELLS = 12;
+export const THROW_CELLS = 14;                   // past the blast's 12 columns: thrown to the side, it leaves a thrower who stands still clear
 export const FLIGHT_MS = 1000;
-export const BLAST_COLUMNS = 8;                  // the blast is an ellipse with these half axes
-export const BLAST_ROWS = 5;
+export const BLAST_COLUMNS = 12;                 // the blast is an ellipse with these half axes
+export const BLAST_ROWS = 7.5;
 export const EXPLOSION_MS = 600;                 // how long the explosion is drawn
 const GOAL_POINTS = 5;
 const WRONG_HEART_POINTS = 15;
@@ -78,6 +78,7 @@ export function createGame(random = Math.random) {
     goal: null,
     lives: LIVES,
     bombs: 0,
+    bombThrown: false, // true from the first throw of this game on
     player: { ...PLAYER_START, steps: 0, facing: 'right', safeUntil: 0, safeEndPending: false, walkSince: null },
     hearts: COLOURS.map((colour) => ({ colour, x: 0, y: 0 })),
     enemies: [newEnemy(1, 0, random)],
@@ -159,6 +160,7 @@ export function setRepeat(game, dir) {
 export function throwBomb(game) {
   if (game.over || game.bombs <= 0) return;
   game.bombs -= 1;
+  game.bombThrown = true;
   const { player } = game;
   const [dx, dy] = DIRECTIONS[player.facing];
   let { x, y } = player;
@@ -170,6 +172,12 @@ export function throwBomb(game) {
   game.thrownBombs.push({
     x, y, fromX: from.x, fromY: from.y, movedAt: game.time, glideMs: FLIGHT_MS, explodesAt: game.time + FLIGHT_MS,
   });
+}
+
+// The hint that says how to throw is due from the first bomb held until the first throw
+// of the game.
+export function showsBombHint(game) {
+  return game.bombs > 0 && !game.bombThrown;
 }
 
 // Runs the clock for `ms` milliseconds. What is due at time T happens when the clock
