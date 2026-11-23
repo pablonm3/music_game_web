@@ -549,7 +549,7 @@ function sameCell(a, b) {
   return a.x === b.x && a.y === b.y;
 }
 
-// Close enough to be picked up, counted on the board as drawn: not across its edges.
+// Close enough to be picked up. Unlike movement, reach does not wrap around the board's edges.
 function inReach(piece, player) {
   return Math.abs(piece.x - player.x) <= PICKUP_COLUMNS && Math.abs(piece.y - player.y) <= PICKUP_ROWS;
 }
