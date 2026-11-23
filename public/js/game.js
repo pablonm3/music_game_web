@@ -116,9 +116,13 @@ export function positionAt(piece, time) {
 export function playerPose(game) {
   const { walkSince, movedAt } = game.player;
   if (walkSince === null) return 0;
-  const strides = Math.ceil((movedAt + REPEAT_DELAY - walkSince) / STRIDE_MS);
-  const stride = Math.floor((game.time - walkSince) / STRIDE_MS);
-  return stride < strides ? 1 + (stride % 2) : 0;
+  const walkStrides = Math.ceil((movedAt + REPEAT_DELAY - walkSince) / STRIDE_MS);
+  const currentStride = Math.floor((game.time - walkSince) / STRIDE_MS);
+  return currentStride < walkStrides ? 1 + (currentStride % 2) : 0;
+}
+
+function isStanding(game) {
+  return playerPose(game) === 0;
 }
 
 // The SAFE_MS after the player reappears, when no life can be taken.
@@ -303,7 +307,7 @@ function movePlayer(game, dir) {
   const y = wrapY(player.y + dy);
   // Across an edge the player is drawn on the new cell at once, not across the board.
   const wrapped = x !== player.x + dx || y !== player.y + dy;
-  if (playerPose(game) === 0) player.walkSince = game.time; // a move while standing starts a walk
+  if (isStanding(game)) player.walkSince = game.time; // a move while standing starts a walk
   glide(game, player, wrapped ? 0 : REPEAT_EVERY, () => {
     player.x = x;
     player.y = y;

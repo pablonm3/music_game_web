@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  advance, chase, COLOURS, createGame, isExpiring, isSafe, playerPose, positionAt, press, setRepeat, throwBomb,
+  advance, chase, COLOURS, createGame, isExpiring, isSafe, playerPose, positionAt, press, REPEAT_DELAY, setRepeat, STRIDE_MS, throwBomb,
 } from '../public/js/game.js';
 
 // Returns the given values in order, then `rest` forever.
@@ -829,17 +829,18 @@ describe('player pose', () => {
   it('finishes its stride after a release and stands less than 300 ms after the last move', () => {
     for (const heldFor of [200, 250, 310, 370, 500, 990]) {
       const game = quietGame();
-      advance(game, 1000);
+      const pressedAt = 1000;
+      advance(game, pressedAt);
       press(game, 'up');
-      const runs = poseRuns(game, 1000 + heldFor);
+      const runs = poseRuns(game, pressedAt + heldFor);
       setRepeat(game, null);
       const lastMove = game.player.movedAt;
       poseRuns(game, lastMove + 600, runs);
       const strides = runs.slice(0, -1);
       assert.equal(runs.at(-1)[0], 0, `held ${heldFor} ms`);
-      assert.ok(strides.every(([pose, ms], i) => pose === 1 + (i % 2) && ms === 120), `held ${heldFor} ms: ${JSON.stringify(runs)}`);
-      const stoodAfter = 1000 + strides.length * 120 - lastMove;
-      assert.ok(stoodAfter >= 180 && stoodAfter < 300, `held ${heldFor} ms: stood ${stoodAfter} ms after the last move`);
+      assert.ok(strides.every(([pose, ms], i) => pose === 1 + (i % 2) && ms === STRIDE_MS), `held ${heldFor} ms: ${JSON.stringify(runs)}`);
+      const stoodAfter = pressedAt + strides.length * STRIDE_MS - lastMove;
+      assert.ok(stoodAfter >= REPEAT_DELAY && stoodAfter < REPEAT_DELAY + STRIDE_MS, `held ${heldFor} ms: stood ${stoodAfter} ms after the last move`);
     }
   });
 
