@@ -4,8 +4,8 @@
 // and y 1 to 30.
 //
 // The page empties game.events every frame and plays a clip of the same name for each:
-// voice-red, voice-blue, voice-cyan, goal, error, enemy, life-lost, explosion; `over`
-// ends the game.
+// voice-red, voice-blue, voice-cyan, goal, error, enemy, bomb, life-lost, explosion;
+// `over` ends the game.
 //
 // Pieces change cell in one instant, as in the original, and contact is decided by
 // cell. Each moving piece also records how its last move is drawn (its glide):
@@ -43,7 +43,8 @@ export const SAFE_MS = 3000;                     // the player flickers and cann
 export const RESPAWN_DISTANCE = 15;              // cells from every enemy, the larger of dx and dy
 export const SHOT_EVERY = 3000;                  // ms from a shooter's arrival to its first shot, and between shots
 export const PROJECTILE_STEP = 80;               // ms per cell of a projectile
-export const BOMB_EVERY = 3;                     // a bomb comes with every third arrival
+export const FIRST_BOMB_AT = ENEMY_ARRIVALS[0];  // the first bomb comes with the second enemy,
+export const BOMB_EVERY = 20_000;                // then one every 20 s
 export const BOMB_STEADY_MS = 10_000;            // a lying bomb, then
 export const BOMB_FLICKER_MS = 2000;             // flickering, then gone
 export const THROW_CELLS = 14;                   // past the blast's 12 columns: thrown to the side, it leaves a thrower who stands still clear
@@ -51,6 +52,8 @@ export const FLIGHT_MS = 1000;
 export const BLAST_COLUMNS = 12;                 // the blast is an ellipse with these half axes
 export const BLAST_ROWS = 7.5;
 export const EXPLOSION_MS = 600;                 // how long the explosion is drawn
+export const PICKUP_COLUMNS = 2;                 // a shroom or a lying bomb is taken from this far:
+export const PICKUP_ROWS = 1;                    // where its image and the player's overlap
 const GOAL_POINTS = 5;
 const WRONG_HEART_POINTS = 15;
 
@@ -83,6 +86,7 @@ export function createGame(random = Math.random) {
     hearts: COLOURS.map((colour) => ({ colour, x: 0, y: 0 })),
     enemies: [newEnemy(1, 0, random)],
     arrivals: 1,
+    nextBombAt: FIRST_BOMB_AT,
     projectiles: [],
     lyingBombs: [],
     thrownBombs: [],
@@ -181,9 +185,9 @@ export function showsBombHint(game) {
 }
 
 // Runs the clock for `ms` milliseconds. What is due at time T happens when the clock
-// reaches T; at one instant the order is: player, end of the safe time, new enemy,
-// enemies by arrival, shots, projectiles, bombs that expire, bombs that explode, the end
-// of an explosion.
+// reaches T; at one instant the order is: player, end of the safe time, new enemy, new
+// bomb, enemies by arrival, shots, projectiles, bombs that expire, bombs that explode, the
+// end of an explosion.
 export function advance(game, ms) {
   if (!(ms > 0)) return;
   const end = game.time + ms;
@@ -206,6 +210,7 @@ function nextDue(game) {
   considerPlayer(game, consider);
   considerSafeEnd(game, consider);
   considerArrival(game, consider);
+  considerNewBomb(game, consider);
   considerEnemySteps(game, consider);
   considerShots(game, consider);
   considerProjectiles(game, consider);
@@ -233,6 +238,15 @@ function considerSafeEnd(game, consider) {
 function considerArrival(game, consider) {
   const at = arrivalTime(game.arrivals + 1);
   consider(at, () => arrive(game, at));
+}
+
+// Bombs come on their own clock, with or without an enemy left. The clock moves on also
+// when no cell is free, so the same bomb never stays due.
+function considerNewBomb(game, consider) {
+  consider(game.nextBombAt, () => {
+    game.nextBombAt += BOMB_EVERY;
+    placeBomb(game);
+  });
 }
 
 function considerEnemySteps(game, consider) {
@@ -294,7 +308,6 @@ function arrive(game, at) {
   const enemy = newEnemy(game.arrivals, at, game.random);
   game.enemies.push(enemy);
   game.events.push('enemy');
-  if (game.arrivals % BOMB_EVERY === 0) placeBomb(game);
   if (sameCell(enemy, game.player)) hitPlayer(game);
 }
 
@@ -322,10 +335,10 @@ function movePlayer(game, dir) {
   });
   player.facing = dir;
 
-  // Two shrooms can lie on one cell. All of them are judged against the goal as it was
-  // named when he stepped on: with the goal's shroom among them the step is right, once,
-  // and none of them counts as wrong.
-  const taken = game.hearts.filter((heart) => sameCell(heart, player));
+  // Every shroom in reach at the end of the move is taken. All of them are judged against
+  // the goal as it was named before the move: with the goal's shroom among them the move
+  // is right, once, and none of them counts as wrong.
+  const taken = game.hearts.filter((heart) => inReach(heart, player));
   if (taken.some((heart) => heart.colour === game.goal)) {
     game.score += GOAL_POINTS;
     game.events.push('goal');
@@ -338,7 +351,7 @@ function movePlayer(game, dir) {
       placeHeart(game, heart);
     }
   }
-  for (const bomb of game.lyingBombs.filter((lying) => sameCell(lying, player))) {
+  for (const bomb of game.lyingBombs.filter((lying) => inReach(lying, player))) {
     remove(game.lyingBombs, bomb);
     game.bombs += 1;
   }
@@ -421,12 +434,13 @@ function checkContact(game) {
   if (projectile) shotHits(game, projectile);
 }
 
-// One bomb on a random cell that holds no other piece.
+// One bomb on a random cell that holds no other piece, named by the event `bomb`.
 function placeBomb(game) {
   const taken = [game.player, ...game.hearts, ...game.enemies, ...game.projectiles, ...game.lyingBombs];
   const cells = playableCells().filter((cell) => !taken.some((piece) => sameCell(piece, cell)));
   if (cells.length === 0) return;
   game.lyingBombs.push({ ...randomCell(game, cells), placedAt: game.time });
+  game.events.push('bomb');
 }
 
 function explode(game, bomb) {
@@ -533,4 +547,9 @@ function removeWhere(list, test) {
 
 function sameCell(a, b) {
   return a.x === b.x && a.y === b.y;
+}
+
+// Close enough to be picked up, counted on the board as drawn: not across its edges.
+function inReach(piece, player) {
+  return Math.abs(piece.x - player.x) <= PICKUP_COLUMNS && Math.abs(piece.y - player.y) <= PICKUP_ROWS;
 }

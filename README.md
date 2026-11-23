@@ -4,7 +4,7 @@ Web version of [music_game](https://github.com/pablonm3/music_game), a Windows c
 
 The pieces are photo-like images that glide from cell to cell over a moving picture of the Amazon rainforest, with monkeys, birds and flies in it: a bald guy in a white t-shirt (the player, whose feet move while he walks), three shrooms that are photos of three real mushrooms, and skeleton robots. Under the frame, one heart for each life left and one bomb for each held bomb (from 6 bombs on, one bomb and the number). The frame, the score and the text screens keep the terminal look.
 
-A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15 (when two shrooms lie on one cell and one of them is the named one, the step counts as right). Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. A bomb comes with every third robot; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. Until the first bomb of a game is thrown, a line under the frame tells how to throw it. The edges wrap around. Sound is required.
+A voice names a colour (red, blue or cyan) that is never shown on screen: take the shroom of that colour for +5, any other shroom costs 15. Shrooms and bombs are picked up from close by, up to 2 columns and 1 row from you (when two shrooms are in reach at once and one of them is the named one, the move counts as right). Robots chase you; one more arrives after one and after two minutes, then one every 20 seconds, and every other one from the third on shoots. You have 3 lives: a robot, a shot or your own bomb costs one, and you reappear elsewhere, safe for 3 seconds. The first bomb comes with the second robot, after one minute, then one every 20 seconds; pick it up within 12 seconds and throw it to blow up the robots and shots around where it lands. Until the first bomb of a game is thrown, a line under the frame tells how to throw it. The edges wrap around. Sound is required.
 
 ## Run it
 
@@ -37,7 +37,7 @@ Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 
 - `server/` — the HTTP server: static files with byte ranges (`static.js`), the leaderboard API (`app.js`) and its rules and JSON file (`leaderboard.js`). Node built-ins only.
 - `public/` — the game: one page and plain JavaScript modules, no build step. The rules are in `js/game.js`, with no DOM, audio or timers.
 - `public/img/` — the images of the game screen (see "Images and sounds").
-- `public/audio/` — MP3 files (128 kbit/s): copies of the original WAV files, same folders and names, plus the new voice in `voice/` and two effects made for this repo.
+- `public/audio/` — MP3 files (128 kbit/s): copies of the original WAV files, same folders and names, plus the new voice in `voice/` and four effects made for this repo, the sound of a robot's arrival among them.
 - `test/` — unit tests.
 
 The original audio was converted from the `music/` folder of the original repo with:
@@ -45,7 +45,7 @@ The original audio was converted from the `music/` folder of the original repo w
 ```bash
 SRC=<path to music_game>/music
 for f in background/b1 background/b2 background/b3 background/b4 background/b5 background/b6 \
-         goal/g1 goal/g2 goal/g3 goal/g4 nextGoal/error enemy record; do
+         goal/g1 goal/g2 goal/g3 goal/g4 nextGoal/error record; do
   ffmpeg -nostdin -loglevel error -i "$SRC/$f.wav" -codec:a libmp3lame -b:a 128k "public/audio/$f.mp3"
 done
 ```
@@ -78,6 +78,8 @@ Licences read at their source on 2026-11-22; for the two iNaturalist photos in i
 | `voice/red.mp3`, `voice/blue.mp3`, `voice/cyan-v2.mp3` | a bright female voice saying the colour, with a light echo | the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) speech model (weights Apache-2.0) through [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) (MIT), voice `af_heart`, speed 1.1, the words `Red!` and `Blue!`; then the `ffmpeg` command below. Cyan is given as the sounds `sˈaɪjæn!` ("SIGH-yan") at speed 1.0, as the model's own reading of `Cyan!` stresses the second syllable and was hard to understand over the music; its command adds a high shelf before the echo, so the "s" is heard, and cuts at 0.95 s | made for this repo |
 | `life-lost.mp3` | a short falling synth sweep | `ffmpeg`, below | made for this repo |
 | `explosion.mp3` | a deep boom with a noise tail | `ffmpeg`, below | made for this repo |
+| `bomb.mp3` | a DJ riser when a bomb appears: a band of noise that climbs from 500 Hz to 8.9 kHz and grows louder, cut short, with two echoes | `ffmpeg`, below | made for this repo |
+| `enemy-v2.mp3` | a bass dive when a robot arrives: two detuned sawtooth waves falling two octaves (260 to 65 Hz), bright at the hit and dark in the tail | `ffmpeg`, below | made for this repo |
 
 ```bash
 # the voice, from the model's WAV output; <gain> sets the mean level to about -13 dB
@@ -93,6 +95,19 @@ ffmpeg -f lavfi -i "aevalsrc='0.6*sin(2*PI*(880*t-520*t*t))+0.3*sin(2*PI*(1320*t
 ffmpeg -f lavfi -i "anoisesrc=d=1.1:c=brown:r=44100:a=1" -f lavfi -i "aevalsrc='sin(2*PI*(90*t-25*t*t))*exp(-3.5*t)':d=1.1:s=44100" \
   -filter_complex "[0]lowpass=f=700,volume='exp(-4.5*t)':eval=frame[n];[1]volume=0.9[s];[n][s]amix=inputs=2:normalize=0,afade=t=in:d=0.005,afade=t=out:st=0.8:d=0.3,volume=2dB" \
   -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k public/audio/explosion.mp3
+
+# the bomb's riser: low-passed white noise multiplied by a sine that sweeps from 500 Hz to 8.9 kHz,
+# a crescendo, a cut and two echoes
+ffmpeg -f lavfi -i "anoisesrc=d=1.2:c=white:r=44100:a=0.9:seed=7" \
+  -f lavfi -i "aevalsrc='sin(2*PI*500*(exp(2.4*t)-1)/2.4)':d=1.2:s=44100" \
+  -filter_complex "[0]lowpass=f=700[n];[n][1]amultiply,volume=30dB,alimiter=limit=0.85:attack=2:release=30:level=0,volume='0.25+0.75*pow(t/1.2,1.5)':eval=frame,afade=t=in:d=0.02,afade=t=out:st=1.17:d=0.03,apad=pad_dur=0.4,aecho=1:0.8:110|220:0.4|0.2,highpass=f=300,atrim=0:1.55,afade=t=out:st=1.4:d=0.15,volume=5dB,alimiter=limit=0.85:attack=2:release=30:level=0" \
+  -ac 1 -ar 44100 -codec:a libmp3lame -b:a 128k public/audio/bomb.mp3
+
+# the robot's dive: two detuned sawtooth waves at 65 + 195*exp(-t/0.12) Hz, a bright layer that
+# dies fast over a dark one, a short echo
+ffmpeg -f lavfi -i "aevalsrc='0.5*(2*mod(65*t+23.4*(1-exp(-t/0.12)),1)-1)+0.5*(2*mod(1.01*(65*t+23.4*(1-exp(-t/0.12))),1)-1)':d=0.7:s=44100" \
+  -filter_complex "[0]asplit[a][b];[a]lowpass=f=2800,volume='exp(-7*t)':eval=frame[bright];[b]lowpass=f=420,volume='1.4*exp(-2.5*t)':eval=frame[dark];[bright][dark]amix=inputs=2:normalize=0,afade=t=in:d=0.004,aecho=0.8:0.35:70:0.3,atrim=0:0.75,afade=t=out:st=0.5:d=0.25,volume=8dB,alimiter=limit=0.85:attack=2:release=30:level=0" \
+  -ac 1 -ar 44100 -codec:a libmp3lame -b:a 128k public/audio/enemy-v2.mp3
 ```
 
 ## Deployment

@@ -213,8 +213,10 @@ describe('hearts and score', () => {
 
   it('checks hearts on every repeated cell too', () => {
     const game = quietGame({ goal: 'cyan' });
-    Object.assign(heart(game, 'cyan'), { x: 52, y: 17 });
+    game.random = scripted([0.8, 0.8]);
+    Object.assign(heart(game, 'cyan'), { x: 54, y: 17 });
     press(game, 'right');
+    assert.equal(game.score, 0, 'on 51,17 the shroom is 3 columns away');
     advance(game, 180);
     assert.equal(game.score, 5);
   });
@@ -257,6 +259,112 @@ describe('hearts and score', () => {
     assert.equal(game.score, -30);
     assert.deepEqual(game.events, ['error', 'error']);
     assert.equal(game.goal, 'red');
+  });
+});
+
+describe('pick-up reach', () => {
+  // A quiet game with the player on `from`, moved one cell `dir` with no repeat after it.
+  function arrive(game, from, dir) {
+    Object.assign(game.player, { x: from[0], y: from[1] });
+    press(game, dir);
+    setRepeat(game, null);
+  }
+
+  it('takes the goal shroom 2 columns and 1 row away like one stepped on', () => {
+    // the shroom goes to (80, 28), the new goal is cyan
+    const game = quietGame({ goal: 'red' });
+    game.random = scripted([0.8, 0.8, 0.9]);
+    Object.assign(heart(game, 'red'), { x: 52, y: 18 });
+    arrive(game, [49, 17], 'right');
+    assert.deepEqual(cell(game.player), [50, 17]);
+    assert.equal(game.score, 5);
+    assert.deepEqual(game.events, ['goal', 'voice-cyan']);
+    assert.deepEqual(cell(heart(game, 'red')), [80, 28]);
+    assert.equal(game.goal, 'cyan');
+  });
+
+  it('takes a shroom on each corner of the reach', () => {
+    for (const [dx, dy] of [[2, 1], [2, -1], [-2, 1], [-2, -1]]) {
+      const game = quietGame({ goal: 'red' });
+      game.random = scripted([0.8, 0.8, 0.9]);
+      Object.assign(heart(game, 'red'), { x: 50 + dx, y: 17 + dy });
+      arrive(game, [49, 17], 'right');
+      assert.equal(game.score, 5, `${dx},${dy}`);
+      assert.deepEqual(cell(heart(game, 'red')), [80, 28], `${dx},${dy}`);
+    }
+  });
+
+  it('counts each wrong shroom in reach: -15 and the error sound for each', () => {
+    const game = quietGame({ goal: 'red' });
+    game.random = scripted([0.3, 0.3, 0.6, 0.6]);
+    Object.assign(heart(game, 'blue'), { x: 53, y: 17 });
+    Object.assign(heart(game, 'cyan'), { x: 49, y: 18 });
+    arrive(game, [50, 17], 'right');
+    assert.equal(game.score, -30);
+    assert.deepEqual(game.events, ['error', 'error']);
+    assert.deepEqual(cells([heart(game, 'blue'), heart(game, 'cyan')]), ['30,10', '60,21']);
+    assert.equal(game.goal, 'red');
+  });
+
+  it('counts the goal shroom once, and no other as wrong, when two in reach lie on different cells', () => {
+    // red to (30, 10), blue to (60, 21), the new goal is blue
+    const game = quietGame({ goal: 'red' });
+    game.random = scripted([0.3, 0.3, 0.6, 0.6, 0.4]);
+    Object.assign(heart(game, 'red'), { x: 52, y: 16 });
+    Object.assign(heart(game, 'blue'), { x: 50, y: 18 });
+    arrive(game, [50, 17], 'right');
+    assert.equal(game.score, 5);
+    assert.deepEqual(game.events, ['goal', 'voice-blue']);
+    assert.deepEqual(cells([heart(game, 'red'), heart(game, 'blue')]), ['30,10', '60,21']);
+  });
+
+  it('takes a lying bomb 2 columns away, and every bomb in reach in one move', () => {
+    const game = quietGame();
+    game.lyingBombs.push({ x: 54, y: 18, placedAt: 0 });
+    arrive(game, [51, 18], 'right');
+    assert.deepEqual(cell(game.player), [52, 18]);
+    assert.equal(game.bombs, 1);
+    assert.deepEqual(game.lyingBombs, []);
+
+    const two = quietGame();
+    two.lyingBombs.push({ x: 50, y: 16, placedAt: 0 }, { x: 54, y: 18, placedAt: 0 });
+    arrive(two, [51, 17], 'right');
+    assert.equal(two.bombs, 2);
+    assert.deepEqual(two.lyingBombs, []);
+  });
+
+  it('takes nothing 3 columns or 2 rows away, nor across an edge', () => {
+    const game = quietGame({ goal: 'red' });
+    Object.assign(heart(game, 'red'), { x: 54, y: 17 });
+    Object.assign(heart(game, 'blue'), { x: 51, y: 19 });
+    game.lyingBombs.push({ x: 48, y: 17, placedAt: 0 }, { x: 51, y: 15, placedAt: 0 });
+    arrive(game, [50, 17], 'right');
+    assert.equal(game.score, 0);
+    assert.equal(game.bombs, 0);
+    assert.deepEqual(cells(game.hearts), ['51,19', '54,17', '92,30']);
+    assert.deepEqual(cells(game.lyingBombs), ['48,17', '51,15']);
+    assert.deepEqual(game.events, []);
+
+    const edge = quietGame({ goal: 'red' });
+    Object.assign(heart(edge, 'red'), { x: 2, y: 10 });
+    edge.lyingBombs.push({ x: 2, y: 11, placedAt: 0 });
+    arrive(edge, [98, 10], 'right');
+    assert.deepEqual(cell(edge.player), [99, 10]);
+    assert.equal(edge.score, 0);
+    assert.equal(edge.bombs, 0);
+    assert.deepEqual(cell(heart(edge, 'red')), [2, 10]);
+    assert.equal(edge.lyingBombs.length, 1);
+    assert.deepEqual(edge.events, []);
+  });
+
+  it('still takes a life only on the same cell as a robot or a projectile', () => {
+    const game = quietGame();
+    Object.assign(game.enemies[0], { x: 52, y: 17 });
+    game.projectiles.push({ x: 51, y: 18, originX: 51, originY: 18, dirX: 0, dirY: 1, steps: 0, nextStepAt: Infinity });
+    arrive(game, [50, 17], 'right');
+    assert.deepEqual(cell(game.player), [51, 17]);
+    assert.equal(game.lives, 3);
+    assert.deepEqual(game.events, []);
   });
 });
 
@@ -305,7 +413,7 @@ describe('enemies', () => {
     assert.equal(game.enemies.length, 2);
     assert.deepEqual(cell(game.enemies[1]), [33, 17]);
     assert.equal(game.enemies[1].interval, 120);
-    assert.deepEqual(game.events, ['enemy']);
+    assert.deepEqual(game.events, ['enemy', 'bomb']);
     advance(game, 119);
     assert.deepEqual(cell(game.enemies[1]), [33, 17]);
     advance(game, 1);
@@ -637,22 +745,81 @@ describe('shooters and projectiles', () => {
 });
 
 describe('bombs', () => {
-  it('places a bomb on a free cell with arrivals 3 and 6, not with 4 and 5', () => {
-    const game = heldGame(119_999);
+  // Puts the player on the bomb's cell and moves him one row, which keeps it in reach.
+  function pickUpLying(game, bomb) {
+    Object.assign(game.player, { x: bomb.x, y: bomb.y });
+    press(game, bomb.y > 1 ? 'up' : 'down');
+    setRepeat(game, null);
+  }
+
+  it('places the first bomb at 60 s on a free cell, none before', () => {
+    const game = heldGame(59_999);
     assert.equal(game.lyingBombs.length, 0);
-    runTo(game, 120_000);
+    assert.ok(!game.events.includes('bomb'));
+    runTo(game, 60_000);
     assert.equal(game.lyingBombs.length, 1);
     const [bomb] = game.lyingBombs;
+    assert.equal(bomb.placedAt, 60_000);
     const others = [game.player, ...game.hearts, ...game.enemies];
     assert.ok(!others.some((piece) => piece.x === bomb.x && piece.y === bomb.y));
-    runTo(game, 131_999);
-    assert.equal(game.lyingBombs.length, 1);
-    runTo(game, 140_000);
-    assert.equal(game.lyingBombs.length, 0, 'gone after 12 s; none with arrival 4');
-    runTo(game, 160_000);
-    assert.equal(game.lyingBombs.length, 0, 'none with arrival 5');
-    runTo(game, 180_000);
-    assert.equal(game.lyingBombs.length, 1, 'one with arrival 6');
+  });
+
+  it('places one bomb every 20 s from 60 s on, at no other time', () => {
+    const game = heldGame(0);
+    for (let at = 60_000; at <= 320_000; at += 20_000) {
+      runTo(game, at - 1);
+      assert.deepEqual(game.lyingBombs, [], `before ${at}: the last one went after 12 s`);
+      runTo(game, at);
+      assert.deepEqual(game.lyingBombs.map((bomb) => bomb.placedAt), [at]);
+    }
+    runTo(game, 330_000);
+    assert.equal(game.events.filter((event) => event === 'bomb').length, 14);
+  });
+
+  it("keeps the bombs' clock when a bomb is picked up and when no enemy is left", () => {
+    const game = heldGame(60_000);
+    pickUpLying(game, game.lyingBombs[0]);
+    assert.equal(game.bombs, 1);
+    assert.deepEqual(game.lyingBombs, []);
+    runTo(game, 70_000);
+    game.enemies.length = 0;           // as after a blast at 70 s
+    runTo(game, 79_999);
+    assert.deepEqual(game.lyingBombs, []);
+    runTo(game, 80_000);
+    assert.deepEqual(game.lyingBombs.map((bomb) => bomb.placedAt), [80_000]);
+    runTo(game, 100_000);
+    assert.deepEqual(game.lyingBombs.map((bomb) => bomb.placedAt), [100_000]);
+    assert.equal(game.enemies.length, 0);
+  });
+
+  it('names a new bomb with the bomb event, and nothing else a bomb does', () => {
+    const game = heldGame(79_999);
+    game.events.length = 0;
+    runTo(game, 80_000);
+    assert.deepEqual(game.events, ['bomb']);
+    game.events.length = 0;
+    // picked up, thrown to the side, exploded; the bomb of 100 s expires at 112 s
+    Object.assign(game.lyingBombs[0], { x: 52, y: 17 });
+    Object.assign(game.player, { x: 50, y: 17 });
+    press(game, 'right');
+    setRepeat(game, null);
+    assert.equal(game.bombs, 1);
+    throwBomb(game);
+    runTo(game, 119_999);
+    assert.deepEqual(game.lyingBombs, []);
+    assert.equal(game.lives, 1000);
+    assert.deepEqual(game.events, ['explosion', 'bomb']);
+  });
+
+  it('names both when a robot and a bomb come at the same instant', () => {
+    const game = heldGame(0);
+    game.player.safeUntil = Infinity;  // no shot takes a life at those instants
+    for (const at of [60_000, 120_000, 140_000]) {
+      runTo(game, at - 1);
+      game.events.length = 0;
+      runTo(game, at);
+      assert.deepEqual(game.events, ['enemy', 'bomb'], `at ${at}`);
+    }
   });
 
   it('flickers from 10 s on and is gone at 12 s, and can be picked up until then', () => {
@@ -851,7 +1018,7 @@ describe('bombs', () => {
     });
   });
 
-  it('keeps later arrivals, their shooters and their bombs when every enemy is destroyed', () => {
+  it('keeps later arrivals, their shooters and the bombs when every enemy is destroyed', () => {
     const game = heldGame(125_000);
     game.lyingBombs.length = 0;
     game.enemies.length = 0;           // as after a blast at 125 s
@@ -860,13 +1027,14 @@ describe('bombs', () => {
     runTo(game, 140_000);
     assert.equal(game.enemies.length, 1);
     assert.equal(game.enemies[0].shooter, false);
+    assert.deepEqual(game.lyingBombs.map((bomb) => bomb.placedAt), [140_000]);
     runTo(game, 160_000);
     assert.equal(game.enemies.length, 2);
     assert.equal(game.enemies[1].shooter, true);
-    assert.equal(game.lyingBombs.length, 0);
+    assert.deepEqual(game.lyingBombs.map((bomb) => bomb.placedAt), [160_000]);
     runTo(game, 180_000);
     assert.equal(game.enemies.length, 3);
-    assert.equal(game.lyingBombs.length, 1, 'arrival 6 brings a bomb');
+    assert.deepEqual(game.lyingBombs.map((bomb) => bomb.placedAt), [180_000]);
   });
 });
 

@@ -10,7 +10,7 @@ const MAX_BYTES = 50 * 1024 * 1024;
 
 describe('audio files', () => {
   it('has a sound for every game event', () => {
-    const names = ['voice-red', 'voice-blue', 'voice-cyan', 'goal', 'error', 'enemy', 'record', 'life-lost', 'explosion'];
+    const names = ['voice-red', 'voice-blue', 'voice-cyan', 'goal', 'error', 'enemy', 'bomb', 'record', 'life-lost', 'explosion'];
     for (const name of names) {
       assert.ok(CLIPS[name], name);
     }
@@ -22,9 +22,9 @@ describe('audio files', () => {
     assert.notEqual(CLIPS['life-lost'], CLIPS.error);
   });
 
-  it('finds every named file under public/, 18 in all, none over 50 MB', () => {
+  it('finds every named file under public/, 19 in all, none over 50 MB', () => {
     const files = [...clipFiles(), ...MUSIC];
-    assert.equal(new Set(files).size, 18);
+    assert.equal(new Set(files).size, 19);
     for (const file of files) {
       const stat = fs.statSync(path.join(publicDir, file));
       assert.ok(stat.isFile(), file);
