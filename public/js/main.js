@@ -6,7 +6,7 @@ import { createApi } from './api.js';
 import { createAudio } from './audio.js';
 import { createBoard } from './board.js';
 import { advance, createGame, press, setRepeat, throwBomb } from './game.js';
-import { attachButtons, attachKeys, createHeld } from './input.js';
+import { attachButtons, attachJoystick, attachKeys, createHeld } from './input.js';
 import {
   HOW_TO_PLAY_LEGEND_LINES, HOW_TO_PLAY_LINES, leaderboardLines, LEGEND_LENGTH, legendLines, legendWrittenAt,
   MENU_ENTRIES, menuLines, renderLines,
@@ -184,7 +184,8 @@ openMenu(0);
 
 const held = createHeld();
 attachKeys(window, held, onAction);
-attachButtons(document.getElementById('controls'), held, onAction);
+attachButtons(document.getElementById('controls'), onAction);
+attachJoystick(document.getElementById('joystick'), held, onAction);
 
 const debug = debugMode
   ? (await import('./debug.js')).installDebug({ getGame: () => game, getScreen: () => screen, audio })

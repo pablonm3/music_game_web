@@ -26,11 +26,11 @@ Environment variables:
 URL switches:
 
 - `?debug=1` test mode: the game clock stands still, a status line shows the game state, and the browser console has `mg.advance(ms)` to run the clock (and with it every timed effect: shots, bombs, the safe time; on the legend, its writing) and `mg.game` for the state of the current game. On the legend the status line shows `written=<n>/<total>`. The status line shows `lives=`, `bombs=` (held), `player=`, `safe=` (while the player flickers), `enemies=` (a shooter's cell ends in `s`), `shrooms=`, `lying=` (bombs on the board, `f` when flickering), `thrown=` (landing cells of bombs in the air) and `projectiles=`; `-` is an empty list.
-- `?touch=1` the phone layout (square cells, the direction pad, `ESC`, `ENTER` and `BOMB` buttons) on any device. It is on by itself on touch devices.
+- `?touch=1` the phone layout on any device: the board fills the screen, with a joystick and the `ESC`, `ENTER` and `BOMB` buttons laid over its bottom corners, see-through. It is on by itself on touch devices.
 
 ## Controls
 
-Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 ms. Space throws a bomb 14 cells in the direction of your last move (`BOMB` on a phone), or to the last cell before the frame; its blast reaches 12 columns and 7 rows around the cell it lands on, so a throw to the side leaves you clear unless the frame stops the bomb short. Enter and Escape in the menus. A name for the leaderboard is one to five letters: type it, or use up and down to change the selected letter (past `Z` or `A` on the last letter removes it) and left and right to move.
+Arrow keys, and `q` `e` `a` `d` for the diagonals; a held key repeats after 180 ms. Space throws a bomb 14 cells in the direction of your last move (`BOMB` on a phone), or to the last cell before the frame; its blast reaches 12 columns and 7 rows around the cell it lands on, so a throw to the side leaves you clear unless the frame stops the bomb short. Enter and Escape in the menus. On a phone, a joystick: push it for one step, hold it to keep walking, slide it to turn. A name for the leaderboard is one to five letters: type it, or use up and down to change the selected letter (past `Z` or `A` on the last letter removes it) and left and right to move.
 
 ## Layout
 

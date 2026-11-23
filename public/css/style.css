@@ -1,6 +1,7 @@
 /* Terminal look: one box of 100 by 33 cells that every screen is drawn in. The cell size
    comes from the viewport alone, so everything scales together and nothing scrolls. The
-   game screen lays images over it: the pieces and a picture behind them. */
+   game screen lays images over it: the pieces and a picture behind them; in touch mode
+   the controls lie over it too. */
 
 :root {
   /* The original's Windows console colours */
@@ -10,9 +11,8 @@
   --black: #000000;
 
   --view-height: 100vh;
-  --controls: 0px;
-  --aspect: 0.6; /* cell width / cell height */
-  --ch: min((var(--view-height) - var(--controls)) / 33, 100vw / 100 / var(--aspect));
+  --aspect: 0.6; /* cell width / cell height on a desktop: a terminal glyph's shape */
+  --ch: min(var(--view-height) / 33, 100vw / 100 / var(--aspect));
   --cw: calc(var(--ch) * var(--aspect));
   --fs: min(var(--ch), var(--cw) / 0.6); /* glyph size that fits the cell */
   --text: var(--fs); /* size of the text screens */
@@ -26,12 +26,18 @@
   :root { --view-height: 100dvh; }
 }
 
-/* Touch mode (a coarse pointer, or ?touch=1): square cells above a 120 px strip of
-   buttons, text screens at twice the cell size. On <html>, where the sizes are computed. */
+/* Touch mode (a coarse pointer, or ?touch=1): the board is as wide as the screen, and its
+   rows as high as the screen allows without a cell slimmer than the desktop's. The
+   controls lie over it. On <html>, where the sizes are computed. */
 html.touch {
-  --controls: 120px;
-  --aspect: 1;
-  --text: calc(var(--fs) * 2);
+  --cw: calc(100vw / 100);
+  --ch: min(var(--view-height) / 33, var(--cw) / var(--aspect));
+  --stick: 120px; /* the joystick's width and height */
+  --edge: 8px;    /* between a control and the terminal's side, and the frame's bottom row */
+  /* Text screens: twice the cell's smaller side, so a row still holds 83 characters and
+     the screen 16 lines; and small enough for a 50 character line (30 times the text
+     size wide) to fit between the controls of the two corners. */
+  --text: min(var(--cw) * 2, var(--ch) * 2, (var(--cw) * 100 - (var(--stick) + var(--edge)) * 2) / 30);
 }
 
 [hidden] { display: none !important; }
@@ -55,7 +61,7 @@ body {
 }
 
 #view {
-  height: calc(var(--view-height) - var(--controls));
+  height: var(--view-height);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,9 +98,10 @@ body {
   white-space: pre;
   color: var(--green);
   background: var(--aqua);
-  /* A glyph is 0.6 of the font size wide; stretch it to square cells in touch mode so
-     the lines stay joined. */
-  transform: scaleX(calc(var(--aspect) / 0.6));
+  /* A glyph is 0.6 of the font size wide, so this size makes it meet its neighbours left
+     and right; a cell is never higher than this size, so it also meets the cells above
+     and below. On a desktop it is the cell's height, as for the other text. */
+  font-size: calc(var(--cw) / 0.6);
 }
 
 /* Column x spans (x - 1) to x cells, row y spans y to y + 1, as in the grid. */
@@ -169,8 +176,9 @@ body {
 /* ---- backdrop: decoration behind the pieces; nothing in it touches the game ---- */
 
 /* Over the playable cells. The scene keeps the picture's shape (980 by 500 scene units)
-   and covers the area: on a desktop it fits exactly, on a phone only its middle band
-   shows. Animals are placed in scene units, so they stay on their trees in both. */
+   and covers the area: on a desktop it fits exactly, on a phone a band at the top and at
+   the bottom is cut off. Animals are placed in scene units, so they stay on their trees
+   in both. */
 .backdrop {
   grid-column: 2 / 100;   /* columns 2 to 99 */
   grid-row: 2 / 32;       /* rows y 1 to 30 */
@@ -282,36 +290,44 @@ body {
   display: none;
 }
 
+/* A layer over the terminal that ends above the frame's bottom row, so nothing covers the
+   row under the frame: the buttons in its left corner, the joystick in its right. Every
+   fill is at most half opaque, so a piece under a control shows through. */
 html.touch #controls {
-  height: var(--controls);
+  position: absolute;
+  inset: 0 var(--edge) calc(var(--ch) * 2 + var(--edge)) var(--edge);
+  z-index: 7;            /* over the pieces and the explosions */
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
-  box-sizing: border-box;
-  touch-action: none;
+  pointer-events: none;  /* only the controls themselves take a finger */
 }
 
-#controls button {
-  font: inherit;
-  color: var(--grey);
-  background: var(--black);
-  border: 1px solid var(--green);
-  border-radius: 0;
-  padding: 0;
+#controls button,
+#joystick {
+  pointer-events: auto;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
-#controls button.down,
+#controls button {
+  font: inherit;
+  color: var(--grey);
+  background: rgb(0 0 0 / 0.35);
+  border: 1px solid var(--green);
+  border-radius: 0;
+  padding: 0;
+}
+
 #controls button:active {
   color: var(--black);
-  background: var(--grey);
+  background: rgb(192 192 192 / 0.5);
 }
 
 #controls .keys {
   display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
@@ -321,17 +337,33 @@ html.touch #controls {
   font-size: 16px;
 }
 
-#controls .pad {
-  display: grid;
-  grid-template-columns: repeat(3, 40px);
-  grid-template-rows: repeat(3, 40px);
+/* The knob stands in the middle at rest, or on the circle in the direction being sent:
+   input.js sets --dx and --dy (-1 to 1) and data-sending. */
+#joystick {
+  position: relative;
+  width: var(--stick);
+  height: var(--stick);
+  box-sizing: border-box;
+  border: 1px solid var(--green);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.25);
 }
 
-#controls .pad button {
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
-  line-height: 1;
+#joystick .knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--stick) / 3);
+  height: calc(var(--stick) / 3);
+  border-radius: 50%;
+  background: rgb(192 192 192 / 0.3);
+  transform: translate(calc(-50% + var(--dx, 0) * var(--stick) / 3),
+                       calc(-50% + var(--dy, 0) * var(--stick) / 3));
+  pointer-events: none;
+}
+
+#joystick[data-sending] .knob {
+  background: rgb(192 192 192 / 0.5);
 }
 
 /* ---- turn notice (touch mode, portrait) ---- */
@@ -341,8 +373,7 @@ html.touch #controls {
 }
 
 @media (orientation: portrait) {
-  html.touch #view,
-  html.touch #controls {
+  html.touch #view {
     display: none;
   }
 

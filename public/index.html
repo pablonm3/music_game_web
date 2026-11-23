@@ -13,27 +13,16 @@
     <div id="terminal">
       <div id="board" hidden></div>
       <div id="text"></div>
+      <div id="controls" aria-label="Touch controls">
+        <div class="keys">
+          <button type="button" data-action="back">ESC</button>
+          <button type="button" data-action="confirm">ENTER</button>
+          <button type="button" data-press="bomb">BOMB</button>
+        </div>
+        <div id="joystick" aria-label="joystick"><span class="knob"></span></div>
+      </div>
     </div>
   </main>
-
-  <div id="controls" aria-label="Touch controls">
-    <div class="keys">
-      <button type="button" data-action="back">ESC</button>
-      <button type="button" data-action="confirm">ENTER</button>
-      <button type="button" data-press="bomb">BOMB</button>
-    </div>
-    <div class="pad">
-      <button type="button" data-dir="upLeft" aria-label="up-left">&#x2196;&#xFE0E;</button>
-      <button type="button" data-dir="up" aria-label="up">&#x2191;</button>
-      <button type="button" data-dir="upRight" aria-label="up-right">&#x2197;&#xFE0E;</button>
-      <button type="button" data-dir="left" aria-label="left">&#x2190;</button>
-      <span></span>
-      <button type="button" data-dir="right" aria-label="right">&#x2192;</button>
-      <button type="button" data-dir="downLeft" aria-label="down-left">&#x2199;&#xFE0E;</button>
-      <button type="button" data-dir="down" aria-label="down">&#x2193;</button>
-      <button type="button" data-dir="downRight" aria-label="down-right">&#x2198;&#xFE0E;</button>
-    </div>
-  </div>
 
   <div id="turn">TURN YOUR DEVICE TO LANDSCAPE</div>
 </body>

@@ -1,7 +1,9 @@
 // The text screens: menu, the legend PLAY opens, how to play (the legend, then the rules),
 // leaderboard. A screen is a list of lines; the line builders have no DOM, renderLines
 // draws them. Every screen fits in 16 lines of 50 characters (a large line counts as
-// three), so it still fits at twice the size on a phone.
+// three), so it still fits at twice the size on a phone. Every line but the first is at
+// most 50 characters wide, a large character counting three, so on a phone it fits
+// between the controls of the two bottom corners.
 //
 // A line is {text, large?, highlight?, tone?} or {parts: [{text, highlight?}], large?}.
 // A highlighted line is drawn in inverse colours and starts with '>'.
@@ -35,7 +37,7 @@ export const HOW_TO_PLAY_LINES = [
   { text: 'LANDS 14 CELLS AHEAD AND BLOWS UP ROBOTS AND SHOTS' },
   { text: 'AROUND IT. STAND CLEAR: IT COSTS A LIFE.' },
   BLANK,
-  { text: 'MOVE: ARROWS, Q E A D (PHONE: THE PAD)' },
+  { text: 'MOVE: ARROWS, Q E A D (PHONE: THE JOYSTICK)' },
   { text: 'BOMB: SPACE (PHONE: BOMB)   ESC: MENU', tone: 'hint' },
 ];
 

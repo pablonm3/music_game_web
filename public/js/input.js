@@ -1,8 +1,9 @@
-// Turns keys and touch buttons into the actions every screen reads:
+// Turns keys, touch buttons and the joystick into the actions every screen reads:
 //   {type: 'press', dir}   a direction newly down
-//   {type: 'repeat', dir}  the direction that keeps repeating after a release, or null
+//   {type: 'repeat', dir}  the direction that keeps repeating after a release, or null;
+//                          also the joystick's new direction when the finger slides to it
 //   {type: 'confirm'} {type: 'back'} {type: 'erase'} {type: 'bomb'} {type: 'letter', letter}
-// readKey and createHeld have no DOM and are tested in Node.
+// readKey, createHeld, stickDirection and stickAction have no DOM and are tested in Node.
 
 const ARROWS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
 const DIAGONAL_LETTERS = { q: 'upLeft', e: 'upRight', a: 'downLeft', d: 'downRight' };
@@ -74,33 +75,11 @@ export function attachKeys(target, held, onAction) {
   target.addEventListener('blur', () => releaseAll(held, onAction));
 }
 
-// Touch buttons: [data-dir] buttons behave like held keys, [data-action] buttons send
-// their action on click (sound may only start at the end of a touch, not at its start),
-// [data-press] buttons send theirs on pointerdown: a second finger tapping while the
-// first holds a direction does not reliably make a click.
-export function attachButtons(root, held, onAction) {
-  for (const button of root.querySelectorAll('[data-dir]')) {
-    const dir = button.dataset.dir;
-    let pointer = null;
-    const release = () => {
-      if (pointer === null) return;
-      pointer = null;
-      button.classList.remove('down');
-      onAction({ type: 'repeat', dir: held.up(dir) });
-    };
-    button.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      if (pointer !== null) return;
-      pointer = event.pointerId;
-      button.setPointerCapture?.(event.pointerId);
-      button.classList.add('down');
-      if (held.down(dir)) onAction({ type: 'press', dir });
-    });
-    button.addEventListener('pointerup', release);
-    button.addEventListener('pointercancel', release);
-    button.addEventListener('lostpointercapture', release);
-  }
-
+// Touch buttons: [data-action] buttons send their action on click (sound may only start
+// at the end of a touch, not at its start), [data-press] buttons send theirs on
+// pointerdown: a second finger tapping while the first holds the joystick does not
+// reliably make a click.
+export function attachButtons(root, onAction) {
   for (const button of root.querySelectorAll('[data-action]')) {
     button.addEventListener('click', (event) => {
       event.preventDefault();
@@ -116,6 +95,88 @@ export function attachButtons(root, held, onAction) {
   }
 
   root.addEventListener('contextmenu', (event) => event.preventDefault());
+}
+
+// Clockwise from right, as the screen's angles run (y grows downward).
+const STICK_DIRECTIONS = ['right', 'downRight', 'down', 'downLeft', 'left', 'upLeft', 'up', 'upRight'];
+const EIGHTH_TURN = Math.PI / 4;
+
+// The direction a finger `dx`, `dy` px from the joystick's middle asks for: the nearest
+// of the eight, or null within `centre` px of the middle. There is no outer limit, so a
+// finger that slid off the joystick still steers.
+export function stickDirection(dx, dy, centre) {
+  if (Math.hypot(dx, dy) <= centre) return null;
+  const eighths = Math.round(Math.atan2(dy, dx) / EIGHTH_TURN); // -4 to 4
+  return STICK_DIRECTIONS[(eighths + 8) % 8];
+}
+
+// The action for a change of the joystick's direction (null: at rest), or null for none;
+// `held` is the one the keys use. A push from rest is a press, as a key going down. A
+// slide only changes which direction repeats: no cell is added and the repeat keeps its
+// time. Back at rest, whatever else is still held repeats.
+export function stickAction(held, from, to) {
+  if (from === to) return null;
+  if (from === null) return held.down(to) ? { type: 'press', dir: to } : null;
+  const stillDown = held.up(from);
+  if (to === null) return { type: 'repeat', dir: stillDown };
+  held.down(to);
+  return { type: 'repeat', dir: to };
+}
+
+// Of the joystick's radius. A finger sends a direction once it is further than PUSH_AT
+// from the middle, and none again once it is back within REST_AT: with one line for
+// both, a finger resting on it would press again and again.
+const PUSH_AT = 1 / 3;
+const REST_AT = 1 / 5;
+
+// One finger steers the joystick at a time; it is captured, so it keeps steering outside
+// the drawn circle until it lifts. While a direction is sent the joystick has
+// data-sending="<dir>", and --dx, --dy (-1 to 1) place its knob on that direction.
+export function attachJoystick(stick, held, onAction) {
+  let finger = null; // pointerId of the finger steering
+  let dir = null;    // the direction being sent
+
+  const steer = (next) => {
+    const action = stickAction(held, dir, next);
+    dir = next;
+    showDirection(stick, dir);
+    if (action) onAction(action);
+  };
+  const read = (event) => {
+    const box = stick.getBoundingClientRect();
+    const radius = box.width / 2;
+    const centre = radius * (dir === null ? PUSH_AT : REST_AT);
+    steer(stickDirection(event.clientX - box.left - radius, event.clientY - box.top - radius, centre));
+  };
+  const release = (event) => {
+    if (event.pointerId !== finger) return;
+    finger = null;
+    steer(null);
+  };
+
+  stick.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    if (finger !== null) return;
+    finger = event.pointerId;
+    stick.setPointerCapture?.(finger);
+    read(event);
+  });
+  stick.addEventListener('pointermove', (event) => {
+    if (event.pointerId === finger) read(event);
+  });
+  stick.addEventListener('pointerup', release);
+  stick.addEventListener('pointercancel', release);
+  stick.addEventListener('lostpointercapture', release);
+}
+
+// For the CSS: the knob's place, on the circle in the direction sent or in the middle.
+function showDirection(stick, dir) {
+  const angle = STICK_DIRECTIONS.indexOf(dir) * EIGHTH_TURN;
+  const [dx, dy] = dir === null ? [0, 0] : [Math.cos(angle), Math.sin(angle)];
+  stick.style.setProperty('--dx', String(Math.round(dx * 1000) / 1000));
+  stick.style.setProperty('--dy', String(Math.round(dy * 1000) / 1000));
+  if (dir === null) delete stick.dataset.sending;
+  else stick.dataset.sending = dir;
 }
 
 function releaseAll(held, onAction) {

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { createHeld, keyDirection, readKey } from '../public/js/input.js';
+import { advance, createGame, press, setRepeat } from '../public/js/game.js';
+import { createHeld, keyDirection, readKey, stickAction, stickDirection } from '../public/js/input.js';
 
 const key = (k, extra = {}) => ({ key: k, repeat: false, ctrlKey: false, altKey: false, metaKey: false, ...extra });
 
@@ -81,5 +82,94 @@ describe('createHeld', () => {
     held.clear();
     assert.equal(held.up('left'), null);
     assert.equal(held.down('right'), true);
+  });
+});
+
+describe('stickDirection', () => {
+  const at = (degrees, distance = 40) => {
+    const angle = (degrees * Math.PI) / 180;
+    return stickDirection(Math.cos(angle) * distance, Math.sin(angle) * distance, 20);
+  };
+
+  it('gives each of the eight directions at its own angle, y growing downward', () => {
+    const expected = ['right', 'downRight', 'down', 'downLeft', 'left', 'upLeft', 'up', 'upRight'];
+    expected.forEach((dir, i) => assert.equal(at(i * 45), dir, `${i * 45} degrees`));
+    assert.equal(stickDirection(0, -40, 20), 'up');
+    assert.equal(stickDirection(-30, 30, 20), 'downLeft');
+  });
+
+  it('takes the nearest direction: the line between two is at 22.5 degrees', () => {
+    assert.equal(at(20), 'right');
+    assert.equal(at(25), 'downRight');
+    assert.equal(at(-20), 'right');
+    assert.equal(at(-25), 'upRight');
+    assert.equal(at(170), 'left');
+    assert.equal(at(-170), 'left');
+  });
+
+  it('gives none at the middle and up to `centre` px from it', () => {
+    assert.equal(stickDirection(0, 0, 20), null);
+    assert.equal(stickDirection(20, 0, 20), null);
+    assert.equal(stickDirection(12, -16, 20), null, '20 px away');
+    assert.equal(stickDirection(20.1, 0, 20), 'right');
+  });
+
+  it('still gives a direction for a finger far outside the joystick', () => {
+    assert.equal(stickDirection(0, -300, 20), 'up');
+    assert.equal(stickDirection(-200, 20, 20), 'left');
+  });
+});
+
+describe('stickAction', () => {
+  it('presses on a push from rest and stops on the way back', () => {
+    const held = createHeld();
+    assert.deepEqual(stickAction(held, null, 'right'), { type: 'press', dir: 'right' });
+    assert.deepEqual(stickAction(held, 'right', null), { type: 'repeat', dir: null });
+  });
+
+  it('repeats the new direction on a slide, and lets go of the old one', () => {
+    const held = createHeld();
+    stickAction(held, null, 'right');
+    assert.deepEqual(stickAction(held, 'right', 'up'), { type: 'repeat', dir: 'up' });
+    assert.deepEqual(stickAction(held, 'up', null), { type: 'repeat', dir: null }, 'right is not held any more');
+  });
+
+  it('sends nothing while the direction stays the same', () => {
+    const held = createHeld();
+    assert.equal(stickAction(held, null, null), null);
+    stickAction(held, null, 'down');
+    assert.equal(stickAction(held, 'down', 'down'), null);
+  });
+
+  it('shares the held directions with the keys', () => {
+    const held = createHeld();
+    held.down('left'); // a key
+    stickAction(held, null, 'up');
+    assert.deepEqual(stickAction(held, 'up', null), { type: 'repeat', dir: 'left' }, 'the key still repeats');
+    assert.equal(stickAction(held, null, 'left'), null, 'a push in the direction a key holds');
+  });
+
+  it('turns without an extra cell and without a new wait when applied as the game screen does', () => {
+    const game = createGame();
+    game.enemies[0].nextStepAt = Infinity;
+    const held = createHeld();
+    const steer = (from, to) => {
+      const action = stickAction(held, from, to);
+      if (action?.type === 'press') press(game, action.dir);
+      if (action?.type === 'repeat') setRepeat(game, action.dir);
+    };
+    const cell = () => [game.player.x, game.player.y];
+
+    steer(null, 'right');
+    assert.deepEqual(cell(), [51, 17]);
+    advance(game, 240); // 180, 240
+    assert.deepEqual(cell(), [53, 17]);
+    steer('right', 'up');
+    assert.deepEqual(cell(), [53, 17], 'no cell at the slide');
+    advance(game, 300); // 300, 360, 420, 480, 540
+    assert.deepEqual(cell(), [53, 12]);
+    steer('up', null);
+    advance(game, 500);
+    assert.deepEqual(cell(), [53, 12]);
   });
 });

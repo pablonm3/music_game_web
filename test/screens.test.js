@@ -10,6 +10,9 @@ const MAX_LINES = 16;
 const MAX_WIDTH = 50;
 // A phone row holds 83 normal characters and a large one is three wide.
 const MAX_LARGE_WIDTH = 27;
+// Below its first line a phone screen stands between the controls: room for 50
+// characters, a large one counting three.
+const MAX_WIDTH_BETWEEN_CONTROLS = 50;
 
 // The ticket's words, as typed.
 const TICKET_LEGEND = '2027, the world has been taken by AI and you are the last hope. Listen carefully to the music '
@@ -19,19 +22,37 @@ const TICKET_LEGEND = '2027, the world has been taken by AI and you are the last
 // A large line is drawn at three times the size, so it takes three lines of room.
 const height = (lines) => lines.reduce((sum, line) => sum + (line.large ? 3 : 1), 0);
 const text = (line) => line.text ?? line.parts.map((part) => part.text).join('');
+const width = (line) => text(line).length * (line.large ? 3 : 1);
+
+const FULL_LEADERBOARD = {
+  entries: Array.from({ length: 10 }, (_, i) => ({ name: 'WWWWW', score: 99999 - i })),
+  highlight: 1,
+};
+const SCREENS = [
+  HOW_TO_PLAY_LINES, HOW_TO_PLAY_LEGEND_LINES, menuLines(0), leaderboardLines({ entries: [] }),
+  leaderboardLines(FULL_LEADERBOARD), legendLines(0), legendLines(LEGEND_LENGTH),
+];
 
 describe('text screens', () => {
   it('fit in 16 lines of 50 characters', () => {
-    const screens = [
-      HOW_TO_PLAY_LINES, HOW_TO_PLAY_LEGEND_LINES, menuLines(0), leaderboardLines({ entries: [] }),
-      legendLines(0), legendLines(LEGEND_LENGTH),
-    ];
-    for (const lines of screens) {
+    for (const lines of SCREENS) {
       assert.ok(height(lines) <= MAX_LINES, `${height(lines)} lines`);
       for (const line of lines) {
         assert.ok(text(line).length <= (line.large ? MAX_LARGE_WIDTH : MAX_WIDTH), text(line));
       }
     }
+  });
+
+  it('keep every line below the first narrow enough to fit between the phone controls', () => {
+    for (const lines of SCREENS) {
+      for (const line of lines.slice(1)) assert.ok(width(line) <= MAX_WIDTH_BETWEEN_CONTROLS, text(line));
+    }
+  });
+
+  it('name the joystick, not the pad, for moving on a phone in HOW TO PLAY', () => {
+    const all = HOW_TO_PLAY_LINES.map(text).join('\n');
+    assert.match(all, /JOYSTICK/);
+    assert.doesNotMatch(all, /PAD/);
   });
 
   it('explain lives, shooters, bombs and the throw key in HOW TO PLAY, and call the hearts shrooms', () => {
