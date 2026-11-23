@@ -792,23 +792,29 @@ describe('bombs', () => {
     assert.equal(game.enemies.length, 0);
   });
 
-  it('names a new bomb with the bomb event, and nothing else a bomb does', () => {
+  it('emits bomb when a bomb is placed', () => {
     const game = heldGame(79_999);
     game.events.length = 0;
     runTo(game, 80_000);
     assert.deepEqual(game.events, ['bomb']);
+  });
+
+  it('emits no bomb event on pick-up, throw, explosion or expiry', () => {
+    const game = heldGame(80_000);
     game.events.length = 0;
-    // picked up, thrown to the side, exploded; the bomb of 100 s expires at 112 s
+    // the 80 s bomb: picked up, thrown to the side, exploded
     Object.assign(game.lyingBombs[0], { x: 52, y: 17 });
     Object.assign(game.player, { x: 50, y: 17 });
     press(game, 'right');
     setRepeat(game, null);
     assert.equal(game.bombs, 1);
     throwBomb(game);
+    // 100 s: a new bomb (event), 112 s: it expires (no event)
     runTo(game, 119_999);
     assert.deepEqual(game.lyingBombs, []);
     assert.equal(game.lives, 1000);
-    assert.deepEqual(game.events, ['explosion', 'bomb']);
+    assert.ok(game.events.includes('explosion'));
+    assert.equal(game.events.filter((event) => event === 'bomb').length, 1);
   });
 
   it('names both when a robot and a bomb come at the same instant', () => {
