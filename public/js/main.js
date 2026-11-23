@@ -106,8 +106,7 @@ function openHowToPlay() {
   };
 }
 
-// The rules page keeps the status-line name `screen=how-to-play` it had before
-// the legend page was put in front of it.
+// The rules page, `screen=how-to-play` on the test mode status line.
 function openHowToPlayRules() {
   showText(HOW_TO_PLAY_LINES);
   screen = {
